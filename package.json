@@ -1,17 +1,17 @@
 {
-  "name": "package-name",
+  "name": "apollo-booster",
   "type": "module",
-  "version": "0.8.0",
+  "version": "0.0.0",
   "author": "linqtojs@gmail.com",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/linq2js/package-name"
+    "url": "git+https://github.com/linq2js/apollo-booster"
   },
   "bugs": {
-    "url": "https://github.com/linq2js/package-name/issues"
+    "url": "https://github.com/linq2js/apollo-booster/issues"
   },
-  "homepage": "https://github.com/linq2js/package-name/",
+  "homepage": "https://github.com/linq2js/apollo-booster/",
   "keywords": [],
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -40,7 +40,9 @@
   },
   "peerDependencies": {
     "@types/react": ">=16.8",
-    "react": ">=16.8"
+    "react": ">=16.8",
+    "@apollo/client": ">=3",
+    "graphql": "*"
   },
   "dependencies": {},
   "devDependencies": {
@@ -58,7 +60,9 @@
     "tslib": "^2.6.2",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
-    "rimraf": "5.0.5"
+    "rimraf": "5.0.5",
+    "@apollo/client": "3.9.7",
+    "graphql": "16.8.1"
   },
   "publishConfig": {
     "access": "public"

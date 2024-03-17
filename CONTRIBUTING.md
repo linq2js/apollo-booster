@@ -13,7 +13,7 @@ first [start a discussion] if it does not already exist.
 From there, we will discuss use-cases for the feature,
 and then finally discuss how it could be implemented.
 
-[start a discussion]: https://github.com/linq2js/package-name/discussions/new
+[start a discussion]: https://github.com/linq2js/apollo-booster/discussions/new
 
 ## Development
 
@@ -56,7 +56,7 @@ and follow it with a colon and a space, then start your message
 from a lowercase letter, like this:
 
 ```
-feat: add a 'package-name' storage type support
+feat: add a 'apollo-booster' storage type support
 ```
 
 You can also specify the scope of the commit in the parentheses after a type:

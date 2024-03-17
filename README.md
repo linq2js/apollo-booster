@@ -1,1 +1,1 @@
-# `package-name`
+# `apollo-booster`
