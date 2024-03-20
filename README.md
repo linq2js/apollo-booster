@@ -181,7 +181,7 @@ Using apollo-booster streamlines the process, reducing complexity and the potent
 
 In the previous example, we consumed multiple queries and then performed calculations within the React hook. This approach is not ideal for complex computational logic. Although we can use useMemo to memoize the results, this technique becomes ineffective if the logic is reused in multiple locations.
 
-In the previous example, we consumed multiple queries and then performed calculations within the React hook. This approach is not ideal for complex computational logic. Although we can use useMemo to memoize the results, this technique becomes ineffective if the logic is reused in multiple locations.
+To make memoizing results more efficient and shareable across multiple locations, we can utilize the dynamic resolver feature. A dynamic resolver is registered to the `client` whenever it is used in a query or mutation.
 
 ```js
 const currentUserResolver = resolver(
