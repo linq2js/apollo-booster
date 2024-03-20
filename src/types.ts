@@ -84,7 +84,7 @@ export type OperationOptions = {
 
 export type PersistOptions = {
   /**
-   * This method will be invoked to read data from storage.
+   * This method is triggered during the initiation of the cache restoration process, specifically for reading persisted data from the data source.
    */
   read?(): Promise<unknown> | unknown;
 

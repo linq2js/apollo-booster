@@ -6,7 +6,7 @@ import {
   useApolloClient,
 } from "@apollo/client";
 import { createAdapter } from "./createAdapter";
-import { adapter, computed, query, reactive } from ".";
+import { from, computed, query, reactive } from ".";
 import {
   ComponentClass,
   FunctionComponent,
@@ -351,7 +351,7 @@ describe("persist", () => {
         const client = useApolloClient();
         if (!installed) {
           installed = true;
-          adapter(client).persist({
+          from(client).persist({
             write(getData) {
               cached = getData();
             },
@@ -382,7 +382,7 @@ describe("persist", () => {
         const client = useApolloClient();
         if (!installed) {
           installed = true;
-          adapter(client).persist({
+          from(client).persist({
             async read() {
               return cached;
             },

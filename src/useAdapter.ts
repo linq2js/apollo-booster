@@ -32,15 +32,14 @@ export type ReactAdapter = Adapter & {
 };
 
 export type UseAdapterFn = {
+  /**
+   * Returns the adapter of the current Apollo client, which is retrieved from the `useApolloClient` hook.
+   */
   (): ReactAdapter;
 };
 
 let lastAdapter: Adapter | undefined;
 
-/**
- * Returns the adapter of the current Apollo client, which is retrieved from the `useApolloClient` hook.
- * @returns
- */
 export const useAdapter: UseAdapterFn = () => {
   const client = useApolloClient();
   const rerender = useState({})[1];

@@ -4,10 +4,27 @@ import { ObservablePromise, observablePromise } from "./observablePromise";
 
 export type UseAsyncOptions<T> = {
   of?: Promise<T>;
-  onComplete?: (data: T) => void;
+
+  /**
+   * This callback is triggered when the promise is successfully resolved, usually to process or handle the successfully retrieved data or result.
+   * @param data
+   * @returns
+   */
+  onSuccess?: (data: T) => void;
+
+  /**
+   * This callback is executed when the associated promise is rejected, typically to handle errors or unexpected conditions that prevented the promise from being fulfilled.
+   * @param error
+   * @returns
+   */
   onError?: (error: unknown) => void;
 };
 
+/**
+ * The API provides an asynchronous interface for handling specified promises, featuring three key properties: `loading`, `data`, and `error`. The `loading` status indicates whether the promise is pending, the `data` property holds the resolved value upon successful completion, and the `error` captures any rejection. The API's `of()` method allows for dynamic modification of the associated promise, enabling the switch to a new promise as needed.
+ * @param options
+ * @returns
+ */
 export const useAsync = <T>(options?: UseAsyncOptions<T>) => {
   const rerender = useState(EMPTY_OBJECT)[1];
   const [ref] = useState(() => {
@@ -48,7 +65,7 @@ export const useAsync = <T>(options?: UseAsyncOptions<T>) => {
             } else {
               status = "success";
               resolve?.(prevPromise.data as T);
-              current.options?.onComplete?.(prevPromise.data as T);
+              current.options?.onSuccess?.(prevPromise.data as T);
             }
 
             if (!current.rendering) {
