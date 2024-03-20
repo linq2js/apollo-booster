@@ -1,0 +1,26 @@
+query((variables) => { document, variables, defaultFetchPolicy })
+query(document)
+
+mutation((variables) => { document, variables, defaultFetchPolicy })
+mutation(document)
+
+reactive(value)
+reactive()
+
+adapter(client)
+
+GQLAdapter
+    evict(query, variables)
+    evict(entity)
+    write(query,  data | reducer, variables)
+    write(entity | ref, data)
+    read(query, variables): Data | undefined
+    get(reactive): Data
+    set(reactive, value)
+    query(query, { variables, fetchPolicy }): Promise
+    mutate(mutation, { variables, fetchPolicy }): Promise
+    call(action, ...args)
+
+ReactGQLAdapter: GQLAdapter
+    // call inside rendering phase
+    get(query | queries, { variables, fetchPolicy }): Data
