@@ -1,9 +1,9 @@
-import { AnyFunc, Adapter, ReactiveVarDef, ReactiveOptions } from "./types";
+import { AnyFunc, ReactiveVarDef, ReactiveOptions } from "./types";
 import { REACTIVE_VAR_DEF_TYPE } from "./utils";
 
 export type CreateReactiveVariableDefFn = {
   <T>(
-    initial: T | ((adapter: Adapter) => T),
+    initial: T | ((get: <R>(reactiveVar: ReactiveVarDef<R>) => R) => T),
     options?: ReactiveOptions
   ): ReactiveVarDef<T>;
 };
@@ -17,6 +17,7 @@ export const createReactiveVarDef: CreateReactiveVariableDefFn = (
     return {
       type: REACTIVE_VAR_DEF_TYPE,
       options,
+      computed: true,
       create: createFn,
     };
   }
@@ -24,6 +25,7 @@ export const createReactiveVarDef: CreateReactiveVariableDefFn = (
   return {
     type: REACTIVE_VAR_DEF_TYPE,
     options,
+    computed: false,
     create() {
       return initial;
     },

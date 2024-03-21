@@ -6,10 +6,7 @@ export {
 
 export { createReactiveVarDef as reactive } from "./createReactiveVarDef";
 
-export {
-  createResolverDef as resolver,
-  createComputed as computed,
-} from "./createResolverDef";
+export { createResolverDef as resolver } from "./createResolverDef";
 
 export { useAdapter as useGQL } from "./useAdapter";
 

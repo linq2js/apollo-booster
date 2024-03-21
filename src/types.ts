@@ -63,12 +63,16 @@ export type ComputedDef<T, R> = ResolverDef & {
 
 export type ReactiveOptions = {
   name?: string;
+  computed?: boolean;
 };
 
 export type ReactiveVarDef<T> = {
-  type: typeof REACTIVE_VAR_DEF_TYPE;
-  create: (adapter: Adapter) => T;
-  options: ReactiveOptions;
+  readonly type: typeof REACTIVE_VAR_DEF_TYPE;
+  create: (
+    get: <R>(reactiveVar: ReactiveVarDef<R>) => R,
+    adapter: Adapter
+  ) => T;
+  readonly options: ReactiveOptions;
 };
 
 export type QueryRefOptions = {

@@ -42,6 +42,55 @@ const stringifyReplacer = (_: string, value: any) => {
   return value;
 };
 
+const createReactiveVar = <T>(
+  persisted: Record<string, object> | undefined,
+  def: ReactiveVarDef<T>,
+  adapter: Adapter,
+  getVar: <R>(def: ReactiveVarDef<R>) => ReactiveVar<R>
+) => {
+  const dependencies = new Set<ReactiveVar<any>>();
+  const unsubscribeAll = new Set<VoidFunction>();
+  const name = def.options.name;
+  const getValue = (otherDef: ReactiveVarDef<any>) => {
+    if (otherDef === def) {
+      throw new Error("Circular dependency");
+    }
+    const otherVar = getVar(otherDef);
+    dependencies.add(otherVar);
+    return otherVar();
+  };
+
+  const reactiveVar = makeVar<any>({});
+
+  // if computed = true, the reactive variable will re-compute whenever its dependencies have change
+  if (def.options?.computed) {
+    const recompute = () => {
+      unsubscribeAll.forEach((x) => x());
+      unsubscribeAll.clear();
+      const nextValue = def.create(getValue, adapter);
+      if (nextValue !== reactiveVar()) {
+        reactiveVar(nextValue);
+      }
+      // subscribe
+      dependencies.forEach((dependency) => {
+        unsubscribeAll.add(dependency.onNextChange(recompute));
+      });
+      dependencies.clear();
+    };
+
+    recompute();
+  } else {
+    // otherwise, it computes once
+    const initial =
+      persisted && name && name in persisted
+        ? persisted[name]
+        : def.create(getValue, adapter);
+
+    reactiveVar(initial);
+  }
+  return reactiveVar;
+};
+
 export const createInternalAdapter = (client: Client) => {
   let existingAdapter = adapters.get(client);
   if (existingAdapter) return existingAdapter;
@@ -61,16 +110,18 @@ export const createInternalAdapter = (client: Client) => {
     }
     return persisted;
   };
+
   const reactiveVars = new Map<ReactiveVarDef<any>, ReactiveVar<any>>();
-  const getReactiveVar = <T>(def: ReactiveVarDef<T>) => {
+
+  const getReactiveVar = <T>(def: ReactiveVarDef<T>): ReactiveVar<T> => {
     let reactiveVar = reactiveVars.get(def);
     if (!reactiveVar) {
-      const name = def.options.name;
-      const initial =
-        persisted?.variables && name && name in persisted.variables
-          ? persisted.variables[name]
-          : def.create(adapter);
-      reactiveVar = makeVar(initial);
+      reactiveVar = createReactiveVar(
+        persisted?.variables,
+        def,
+        adapter,
+        getReactiveVar
+      );
       reactiveVars.set(def, reactiveVar);
     }
     return reactiveVar;

@@ -6,7 +6,7 @@ import {
   useApolloClient,
 } from "@apollo/client";
 import { createAdapter } from "./createAdapter";
-import { from, computed, query, reactive, mutation, resolver, typed } from ".";
+import { from, query, reactive, mutation, resolver, typed } from ".";
 import {
   ComponentClass,
   FunctionComponent,
@@ -53,7 +53,7 @@ const USER_GQL = gql`
   }
 `;
 
-const fullNameComputedField = computed(
+const fullNameComputedField = resolver.computed(
   "User.fullName",
   (user: { firstName: string; lastName: string }) => {
     return `${user.firstName} ${user.lastName}`;
@@ -183,6 +183,18 @@ describe("reactiveVar", () => {
       adapter.set(countVar, 2);
     });
     expect(result.current).toBe(2);
+  });
+
+  test("computed", () => {
+    const [adapter] = createTestAdapter();
+    const A = reactive(1);
+    const B = reactive(2);
+    const Sum = reactive((get) => get(A) + get(B), { computed: true });
+    expect(adapter.get(Sum)).toBe(3);
+    adapter.set(A, 2);
+    expect(adapter.get(Sum)).toBe(4);
+    adapter.set(B, 3);
+    expect(adapter.get(Sum)).toBe(5);
   });
 });
 

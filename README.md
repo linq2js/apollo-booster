@@ -316,12 +316,14 @@ from(client).persist({ write });
 
 Although the Apollo Client provides reactive variables for storing simple values, reactive variables have the following limitations: values are not persistent, they operate globally and are not tied to individual Apollo Client instances, making it difficult to reset values during unit testing.
 
-Apollo Booster enhances the efficiency of using reactive variables. Each reactive variable can be initialized lazily and associated with a specified Apollo Client. Within a React component, these reactive variables can be consumed on-demand, allowing for a more optimized and flexible approach to managing state in applications. This lazy initialization and association with specific Apollo Client instances improve modularity and facilitate easier unit testing.
+Apollo Booster enhances the efficiency of using reactive variables. Each reactive variable can be initialized lazily and associated with a specified Apollo Client. Within a React component, these reactive variables can be consumed on-demand, computed variables, allowing for a more optimized and flexible approach to managing state in applications. This lazy initialization and association with specific Apollo Client instances improve modularity and facilitate easier unit testing.
 
 ```js
 import { useAdapter, reactive } from "apollo-booster";
 
 const countVar = reactive(1);
+// define computed reactive variable, when countVar changed, doubledCountVar changes as well
+const doubledCountVar = reactive((get) => get(countVar), { computed });
 const themeVar = reactive("dark");
 
 const App = (props) => {
@@ -340,6 +342,7 @@ const App = (props) => {
     <>
       {/* retrieve variable value and perform binding to the component */}
       <h1>{use(countVar)}</h1>
+      <h1>{use(doubledCountVar)}</h1>
       {/* conditional rendering with reactive variable, perform binding lazily */}
       {props.showTheme && <div>{use(themeVar)}</div>}
     </>
