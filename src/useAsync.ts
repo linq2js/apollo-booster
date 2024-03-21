@@ -35,16 +35,31 @@ export const useAsync = <T>(options?: UseAsyncOptions<T>) => {
     let resolve: ((data: T) => void) | undefined;
     let reject: ((error: unknown) => void) | undefined;
 
-    const loadable = {
+    const api = {
       get status() {
         return status;
       },
+      /**
+       * no associated promise
+       */
+      get idle() {
+        return status === "idle";
+      },
+      /**
+       * the associated promise is pending
+       */
       get loading() {
         return prevPromise?.loading ?? false;
       },
+      /**
+       * return a rejected reason of associated promise
+       */
       get error() {
         return prevPromise?.error;
       },
+      /**
+       * return a resolved value of associated promise
+       */
       get data() {
         return prevPromise?.data;
       },
@@ -81,7 +96,7 @@ export const useAsync = <T>(options?: UseAsyncOptions<T>) => {
             // promise is resolved or rejected
           }
         }
-        return loadable;
+        return api;
       },
       then(...args: Parameters<Promise<T>["then"]>) {
         if (!prevPromise) {
@@ -102,7 +117,7 @@ export const useAsync = <T>(options?: UseAsyncOptions<T>) => {
 
     return {
       current,
-      loadable,
+      loadable: api,
       cleanup() {
         unsubscribe?.();
         prevPromise = undefined;

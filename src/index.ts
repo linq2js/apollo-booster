@@ -12,3 +12,5 @@ export {
 } from "./createResolverDef";
 
 export { useAdapter as useGQL } from "./useAdapter";
+
+export * from "./typed";

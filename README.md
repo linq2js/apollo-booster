@@ -200,7 +200,7 @@ In the previous example, we consumed multiple queries and then performed calcula
 To make memoizing results more efficient and shareable across multiple locations, we can utilize the dynamic resolver feature. A dynamic resolver is registered to the `client` whenever it is used in a query or mutation.
 
 ```js
-const currentUserResolver = resolver(
+const CurrentUserResolver = resolver(
   // a query name
   "Query.currentUser",
   (adapter) => {
@@ -241,7 +241,7 @@ const CurrentUserQuery = query((variables) => {
       }
     `,
     // list of required resolvers
-    require: [CurrentUserQuery],
+    require: [CurrentUserResolver],
     variables,
   };
 });
