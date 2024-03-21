@@ -17,6 +17,11 @@ import {
   RESOLVER_DEF_TYPE,
 } from "./utils";
 
+/**
+ * Empty object
+ */
+export type EO = {};
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type AnyFunc = (...args: any[]) => any;
 
@@ -26,12 +31,12 @@ export type Equal<T = any> = (a: T, b: T) => boolean;
 
 export type Client = ApolloClient<any>;
 
-export type QueryDef<TData extends object, TVariables extends object> = {
+export type QueryDef<TData extends EO, TVariables extends EO> = {
   type: typeof QUERY_DEF_TYPE;
   create: OptionsBuilder<TData, TVariables>;
 };
 
-export type OptionsBuilder<TData extends object, TVariables extends object> = (
+export type OptionsBuilder<TData extends EO, TVariables extends EO> = (
   variables: TVariables
 ) => {
   variables?: object;
@@ -41,12 +46,12 @@ export type OptionsBuilder<TData extends object, TVariables extends object> = (
 
 export type OptionsWithVariablesArgs<
   TVariables,
-  TOptions extends object
-> = object extends TVariables
+  TOptions extends EO
+> = EO extends TVariables
   ? [options?: TOptions]
   : [options: { variables: TVariables } & TOptions];
 
-export type MutationDef<TData extends object, TVariables extends object> = {
+export type MutationDef<TData extends EO, TVariables extends EO> = {
   type: typeof MUTATION_DEF_TYPE;
   create: OptionsBuilder<TData, TVariables>;
 };
@@ -77,13 +82,13 @@ export type ReactiveVarDef<T> = {
 
 export type QueryRefOptions = {
   document: DocumentNode;
-  variables?: object;
+  variables?: EO;
   fetchPolicy?: WatchQueryFetchPolicy;
 };
 
 export type OperationOptions = {
   fetchPolicy?: FetchPolicy;
-  variables?: object;
+  variables?: EO;
 };
 
 export type PersistOptions = {
@@ -106,15 +111,13 @@ export type Adapter = {
    * execute query
    * @param query
    */
-  query<TData extends object>(query: QueryDef<TData, object>): Promise<TData>;
+  query<TData extends EO>(query: QueryDef<TData, EO>): Promise<TData>;
 
   /**
    * execute mutation
    * @param mutation
    */
-  mutate<TData extends object>(
-    mutation: MutationDef<TData, object>
-  ): Promise<TData>;
+  mutate<TData extends EO>(mutation: MutationDef<TData, EO>): Promise<TData>;
 
   /**
    * Invoke the specified action, passing the current adapter as the first argument.
@@ -138,15 +141,15 @@ export type Adapter = {
    * Return cached data of specified query
    * @param query
    */
-  get<TData extends object>(query: QueryDef<TData, object>): TData | undefined;
+  get<TData extends EO>(query: QueryDef<TData, EO>): TData | undefined;
 
   /**
    *
    * @param query
    * @param valueOrReducer
    */
-  set<TData extends object>(
-    query: QueryDef<TData, object>,
+  set<TData extends EO>(
+    query: QueryDef<TData, EO>,
     valueOrReducer: TData | ((prev: TData) => TData)
   ): TData;
 
@@ -164,7 +167,7 @@ export type Adapter = {
    * @param entity
    * @param data These might be new or partial properties of the object. Modifiers can be passed for each property, which retrieve the old value of the property and return a new value.
    */
-  set<T extends object>(
+  set<T extends EO>(
     entity: T,
     data: {
       [key in keyof T]?: ComputedDef<T, T[key]> | T[key] | Modifier<T[key]>;

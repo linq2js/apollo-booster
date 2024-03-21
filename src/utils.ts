@@ -1,6 +1,7 @@
 import { DocumentNode } from "graphql";
 import {
   ComputedDef,
+  EO,
   MutationDef,
   OperationOptions,
   QueryDef,
@@ -17,7 +18,7 @@ export const NOOP = () => {
   //
 };
 
-export const EMPTY_OBJECT = Object.seal(Object.freeze({}));
+export const EMPTY_OBJECT: EO = Object.seal(Object.freeze({}));
 
 export const RESOLVED = Promise.resolve();
 
@@ -29,7 +30,7 @@ export const isType = (value: unknown, type: symbol) => {
   return isObject(value) && "type" in value && value.type === type;
 };
 
-export const isQueryDef = <D extends object, V extends object>(
+export const isQueryDef = <D extends EO, V extends EO>(
   value: unknown
 ): value is QueryDef<D, V> => {
   return isType(value, QUERY_DEF_TYPE);
@@ -41,7 +42,7 @@ export const isReactiveVarDef = <T>(
   return isType(value, REACTIVE_VAR_DEF_TYPE);
 };
 
-export const isMutationDef = <D extends object, V extends object>(
+export const isMutationDef = <D extends EO, V extends EO>(
   value: unknown
 ): value is MutationDef<D, V> => {
   return isType(value, MUTATION_DEF_TYPE);
@@ -51,7 +52,7 @@ export const isResolverDef = (value: unknown): value is ResolverDef => {
   return isType(value, RESOLVER_DEF_TYPE);
 };
 
-export const isComputedDef = <T extends object, R>(
+export const isComputedDef = <T extends EO, R>(
   value: unknown
 ): value is ComputedDef<T, R> => {
   return (
@@ -91,8 +92,8 @@ export const isPlainObject = (
   return proto === baseProto;
 };
 
-export const createOperationOptions = <TData extends object>(
-  operation: QueryDef<TData, object> | MutationDef<TData, object>
+export const createOperationOptions = <TData extends EO>(
+  operation: QueryDef<TData, EO> | MutationDef<TData, EO>
 ): OperationOptions & { document: DocumentNode; require?: ResolverDef[] } => {
   const options =
     "options" in operation

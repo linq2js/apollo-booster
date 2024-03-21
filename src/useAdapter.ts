@@ -1,15 +1,15 @@
 import { useApolloClient } from "@apollo/client";
 
-import { Adapter, QueryDef, ReactiveVarDef } from "./types";
+import { Adapter, EO, QueryDef, ReactiveVarDef } from "./types";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { createReactAdapter } from "./createReactAdapter";
 
-type AcceptObservableType = ReactiveVarDef<any> | QueryDef<any, object>;
+type AcceptObservableType = ReactiveVarDef<any> | QueryDef<any, EO>;
 type ObservableData<T extends AcceptObservableType> = T extends ReactiveVarDef<
   infer D
 >
   ? D
-  : T extends QueryDef<infer D, object>
+  : T extends QueryDef<infer D, EO>
   ? D
   : never;
 type MaybeObservable<T> = Extract<T, AcceptObservableType> extends never

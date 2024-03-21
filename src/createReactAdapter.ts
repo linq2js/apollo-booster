@@ -1,5 +1,5 @@
 import { createInternalAdapter } from "./createAdapter";
-import { Client, QueryDef, ReactiveVarDef } from "./types";
+import { Client, EO, QueryDef, ReactiveVarDef } from "./types";
 import {
   RESOLVED,
   createOperationOptions,
@@ -21,9 +21,7 @@ export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
     subscribeAll() {
       shouldSubscribe.forEach((x) => x());
     },
-    use(
-      ...defs: readonly (QueryDef<any, object> | ReactiveVarDef<any>)[]
-    ): any {
+    use(...defs: readonly (QueryDef<any, EO> | ReactiveVarDef<any>)[]): any {
       const promises: Promise<any>[] = [];
       const results: any[] = [];
       defs.forEach((def, index) => {
@@ -37,7 +35,7 @@ export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
           return;
         }
         if (isQueryDef(def)) {
-          const options = createOperationOptions(def as QueryDef<any, object>);
+          const options = createOperationOptions(def as QueryDef<any, EO>);
           if (options.require && adapter.require(...options.require)) {
             promises.push(RESOLVED);
             return;

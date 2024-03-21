@@ -476,13 +476,13 @@ The `Adapter` interface serves as a bridge between your application and the Apol
   - `client`: A readonly property that gives access to the underlying ApolloClient instance.
 
 - **Methods**:
-  - `query<TData extends object>(query: QueryDef<TData, object>): Promise<TData>`: Executes a GraphQL query and returns a promise that resolves with the data.
-  - `mutate<TData extends object>(mutation: MutationDef<TData, object>): Promise<TData>`: Performs a GraphQL mutation and returns a promise that resolves with the result.
+  - `query<TData extends object>(query: QueryDef<TData, EO>): Promise<TData>`: Executes a GraphQL query and returns a promise that resolves with the data.
+  - `mutate<TData extends object>(mutation: MutationDef<TData, EO>): Promise<TData>`: Performs a GraphQL mutation and returns a promise that resolves with the result.
   - `call<TResult, TArgs extends readonly any[]>(action: (adapter: Adapter, ...args: TArgs) => TResult, ...args: TArgs): TResult`: Invokes a specified action, passing the adapter as the first argument along with any other provided arguments.
   - `ref<T>(options: QueryRefOptions): QueryRef<T>`: Creates a `QueryRef` instance for managing a query's lifecycle, including re-fetching, subscription to result changes, and more.
   - `get<TData>(reactiveVar: ReactiveVarDef<TData>): TData`: Retrieves the current value of a specified reactive variable.
-  - `get<TData extends object>(query: QueryDef<TData, object>): TData | undefined`: Retrieves cached data for a specified query, if available.
-  - `set<TData extends object>(query: QueryDef<TData, object>, valueOrReducer: TData | ((prev: TData) => TData)): TData`: Updates the cache for a given query with either a new value or the result of a provided reducer function.
+  - `get<TData extends object>(query: QueryDef<TData, EO>): TData | undefined`: Retrieves cached data for a specified query, if available.
+  - `set<TData extends object>(query: QueryDef<TData, EO>, valueOrReducer: TData | ((prev: TData) => TData)): TData`: Updates the cache for a given query with either a new value or the result of a provided reducer function.
   - `set<TData>(reactiveVar: ReactiveVarDef<TData>, valueOrReducer: TData | ((prev: TData) => TData)): TData`: Sets a new value for a specified reactive variable, using either a direct value or a reducer function.
   - `set<T extends object>(entity: T, data: { [key in keyof T]?: ComputedDef<T, T[key]> | T[key] | Modifier<T[key]>; }): VoidFunction`: Updates properties of an object in the cache, affecting all related queries containing that object.
   - `evict(storedObject: StoreObject | Reference): boolean`: Removes an object from the cache, updating all related queries.

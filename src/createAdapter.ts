@@ -5,7 +5,14 @@ import {
   ReactiveVar,
   Resolvers,
 } from "@apollo/client";
-import { Client, Adapter, ReactiveVarDef, ResolverDef, AnyFunc } from "./types";
+import {
+  Client,
+  Adapter,
+  ReactiveVarDef,
+  ResolverDef,
+  AnyFunc,
+  EO,
+} from "./types";
 import {
   EMPTY_OBJECT,
   NOOP,
@@ -43,7 +50,7 @@ const stringifyReplacer = (_: string, value: any) => {
 };
 
 const createReactiveVar = <T>(
-  persisted: Record<string, object> | undefined,
+  persisted: Record<string, EO> | undefined,
   def: ReactiveVarDef<T>,
   adapter: Adapter,
   getVar: <R>(def: ReactiveVarDef<R>) => ReactiveVar<R>
