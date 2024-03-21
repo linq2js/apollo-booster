@@ -102,7 +102,7 @@ export const createInternalAdapter = (client: Client) => {
   let existingAdapter = adapters.get(client);
   if (existingAdapter) return existingAdapter;
   const registeredResolvers = new Set<ResolverDef>();
-  const queryRefByDocumentCache = new WeakMap<
+  let queryRefByDocumentCache = new WeakMap<
     DocumentNode,
     Map<string, QueryRef<any>>
   >();
@@ -354,6 +354,15 @@ export const createInternalAdapter = (client: Client) => {
     },
     getReactiveVar,
   };
+
+  const originClearStore = client.clearStore;
+  Object.assign(client, {
+    clearStore() {
+      originClearStore.call(client);
+      queryRefByDocumentCache = new WeakMap();
+      reactiveVars.clear();
+    },
+  });
 
   adapters.set(client, adapter);
 
