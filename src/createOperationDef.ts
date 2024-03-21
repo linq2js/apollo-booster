@@ -25,7 +25,7 @@ export type CreateQueryDefFn = {
   <TData extends EO = EO, TVariables extends EO = EO>(
     document: DocumentNode
   ): QueryDef<TData, TVariables> &
-    OperationUtils<TVariables, QueryDef<TVariables, EO>>;
+    OperationUtils<TVariables, QueryDef<TData, EO>>;
 
   <TData extends EO = EO, TVariables extends EO = EO>(
     create: OptionsBuilder<TData, TVariables>
