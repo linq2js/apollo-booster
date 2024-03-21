@@ -307,7 +307,7 @@ const debouncedWrite = (getData) => {
 from(client).persist({ write });
 ```
 
-### Using `new` Reactive Variable
+### Using `New Reactive Variable`
 
 Although the Apollo Client provides reactive variables for storing simple values, reactive variables have the following limitations: values are not persistent, they operate globally and are not tied to individual Apollo Client instances, making it difficult to reset values during unit testing.
 
@@ -340,6 +340,87 @@ const App = (props) => {
     </>
   );
 };
+```
+
+### Utilize a Resolver to integrate multiple external APIs
+
+If you are dealing with multiple API endpoints, each utilizing different technologies and protocols, you can employ a "resolver" to encapsulate all the data fetching logic. This approach eliminates the need for creating a new Apollo Link for each endpoint.
+
+```js
+import { typed, resolver } from "apollo-booster";
+
+// define a resolver to handle REST API
+const TodoListResolver = resolver("Query.todos", () => async (parent, args) => {
+  // call REST API
+  const res = await fetch("https://jsonplaceholder.typicode.com/todos");
+  return await res.json();
+});
+
+const TodoListQuery = query(() => {
+  return {
+    document: gql`
+      query {
+        todos @client {
+          id
+          title
+          completed
+        }
+      }
+    `,
+    require: [TodoListResolver],
+  };
+});
+```
+
+The response from a REST API lacks the `__typename` field, indicating that the objects are untyped. To associate these objects with an existing type in the GraphQL schema, you can use the `typed` function to automatically assign a `__typename` field to each object.
+
+```js
+import { typed } from "apollo-booster";
+const TodoListResolver = resolver("Query.todos", () => async (parent, args) => {
+  // call REST API
+  const res = await fetch("https://jsonplaceholder.typicode.com/todos");
+  // now each item in todo list has __typename prop = 'Todo'
+  return typed(res.json(), { name: "Todo" });
+});
+```
+
+By adding the `__typename` field to JSON objects, you enable the use of `field` queries on those objects.
+
+```js
+const UserResolver = resolver(
+  // define `user` field for Todo and Post types
+  ["Todo.user", "Post.user"],
+  (adapter) => async (parent, args) => {
+    // read userId from Todo or Post object
+    const userId = parent.userId;
+    const res = await fetch(
+      `https://jsonplaceholder.typicode.com/users/${userId}`
+    );
+    return typed(res.json(), { name: "User" });
+  }
+);
+
+// refactor TodoListQuery
+const TodoListQuery = query(() => {
+  return {
+    document: gql`
+      query {
+        todos @client {
+          id
+          title
+          completed
+          # select user field
+          user @client {
+            id
+            name
+            email
+          }
+        }
+      }
+    `,
+    require: [TodoListResolver, UserResolver],
+  };
+});
 ```
 
 ## API References
