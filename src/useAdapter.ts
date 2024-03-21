@@ -38,8 +38,6 @@ export type UseAdapterFn = {
   (): ReactAdapter;
 };
 
-let lastAdapter: Adapter | undefined;
-
 export const useAdapter: UseAdapterFn = () => {
   const client = useApolloClient();
   const rerender = useState({})[1];
@@ -59,8 +57,6 @@ export const useAdapter: UseAdapterFn = () => {
   const restoring = adapter.ready();
   if (restoring) throw restoring;
 
-  lastAdapter = adapter;
-
   adapter.cleanup();
   adapter.state.status = "rendering";
 
@@ -79,5 +75,3 @@ export const useAdapter: UseAdapterFn = () => {
 
   return adapter;
 };
-
-export const getLastAdapter = () => lastAdapter;

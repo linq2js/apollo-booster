@@ -19,7 +19,7 @@ export type CreateQueryDefFn = {
   <TData extends object = object, TVariables extends object = object>(
     document: TypedDocumentNode<TData, TVariables>
   ): QueryDef<TData, TVariables> &
-    OperationUtils<TVariables, QueryDef<TVariables, object>>;
+    OperationUtils<TVariables, QueryDef<TData, object>>;
 
   <TData extends object = object, TVariables extends object = object>(
     document: DocumentNode
@@ -29,24 +29,24 @@ export type CreateQueryDefFn = {
   <TData extends object = object, TVariables extends object = object>(
     create: OptionsBuilder<TData, TVariables>
   ): QueryDef<TData, TVariables> &
-    OperationUtils<TVariables, QueryDef<TVariables, object>>;
+    OperationUtils<TVariables, QueryDef<TData, object>>;
 };
 
 export type CreateMutationDefFn = {
   <TData extends object = object, TVariables extends object = object>(
     document: TypedDocumentNode<TData, TVariables>
   ): MutationDef<TData, TVariables> &
-    OperationUtils<TVariables, MutationDef<TVariables, object>>;
+    OperationUtils<TVariables, MutationDef<TData, object>>;
 
   <TData extends object = object, TVariables extends object = object>(
     document: DocumentNode
   ): MutationDef<TData, TVariables> &
-    OperationUtils<TVariables, MutationDef<TVariables, object>>;
+    OperationUtils<TVariables, MutationDef<TData, object>>;
 
   <TData extends object = object, TVariables extends object = object>(
     create: OptionsBuilder<TData, TVariables>
   ): MutationDef<TData, TVariables> &
-    OperationUtils<TVariables, MutationDef<TVariables, object>>;
+    OperationUtils<TVariables, MutationDef<TData, object>>;
 };
 
 const createOperationDefInternal = <const TType extends symbol>(

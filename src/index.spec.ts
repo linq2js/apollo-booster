@@ -6,19 +6,21 @@ import {
   useApolloClient,
 } from "@apollo/client";
 import { createAdapter } from "./createAdapter";
-import { from, computed, query, reactive } from ".";
+import { from, computed, query, reactive, mutation, resolver, typed } from ".";
 import {
   ComponentClass,
   FunctionComponent,
   PropsWithChildren,
+  ReactNode,
   Suspense,
   createElement,
 } from "react";
 import { screen, act, renderHook } from "@testing-library/react";
-import { getLastAdapter, useAdapter } from "./useAdapter";
+import { useAdapter } from "./useAdapter";
 import { ErrorBoundary } from "react-error-boundary";
 import { delay } from "./utils";
 import { MockedProvider, MockedProviderProps } from "@apollo/client/testing";
+import { Adapter } from "./types";
 
 const COUNT_GQL = gql`
   query {
@@ -106,7 +108,8 @@ const createTestAdapter = () => {
 
 const createWrapper = <TProps extends object>(
   providerType: FunctionComponent<TProps> | ComponentClass<TProps>,
-  providerProps: Omit<TProps, "children">
+  providerProps: Omit<TProps, "children">,
+  ...children: ReactNode[]
 ) => {
   const wrapper = (props: PropsWithChildren) =>
     createElement(providerType, {
@@ -115,7 +118,7 @@ const createWrapper = <TProps extends object>(
         fallback: createElement("div", { children: "error" }),
         children: createElement(Suspense, {
           fallback: createElement("div", { children: "loading" }),
-          children: props.children,
+          children: [...children, props.children],
         }),
       }),
     });
@@ -126,7 +129,17 @@ const createWrapper = <TProps extends object>(
 const createMockProvider = (
   providerProps: MockedProviderProps = { mocks: defaultMocks }
 ) => {
-  return createWrapper(MockedProvider, providerProps);
+  let lastAdapter: Adapter | undefined;
+  const AccessLastAdapter = () => {
+    lastAdapter = useAdapter();
+    return null;
+  };
+  const wrapper = createWrapper(
+    MockedProvider,
+    providerProps,
+    createElement(AccessLastAdapter, { key: "AccessLastAdapter" })
+  );
+  return [wrapper, () => lastAdapter] as const;
 };
 
 describe("reactiveVar", () => {
@@ -175,7 +188,7 @@ describe("reactiveVar", () => {
 
 describe("query", () => {
   test("simple value", async () => {
-    const wrapper = createMockProvider();
+    const [wrapper] = createMockProvider();
     const countQuery = query<{ count: number }>(COUNT_GQL);
     const doubledCountQuery = query<{ doubledCount: number }>(
       DOUBLED_COUNT_GQL
@@ -199,7 +212,7 @@ describe("query", () => {
 
 describe("resolver", () => {
   test("type resolver", async () => {
-    const wrapper = createMockProvider();
+    const [wrapper] = createMockProvider();
     const userQuery = query<{
       user: { firstName: string; lastName: string; fullName: string };
     }>(() => ({
@@ -224,12 +237,69 @@ describe("resolver", () => {
       fullName: "Ging Freecss",
     });
   });
+
+  test("typed json objects", async () => {
+    const [wrapper, getLastAdapter] = createMockProvider();
+    const userQuery = query<{
+      user: { firstName: string; lastName: string };
+    }>(() => ({ document: USER_GQL }));
+    const updateUserResolver = resolver("Mutation.updateUser", () => () => {
+      const result = typed(
+        { id: 1, firstName: "updated firstName" },
+        { name: "User" }
+      );
+      return result;
+    });
+    const updateUserMutation = mutation(() => ({
+      document: gql`
+        mutation {
+          updateUser @client {
+            id
+            firstName
+          }
+        }
+      `,
+      require: [updateUserResolver],
+    }));
+    const { result } = renderHook(
+      () => {
+        // execute multiple queries at once
+        const [{ user }] = useAdapter().use(
+          userQuery.with({ fetchPolicy: "cache-first" })
+        );
+        return user;
+      },
+      { wrapper }
+    );
+
+    await act(delay);
+    await act(delay);
+
+    expect(result.current).toEqual({
+      id: 1,
+      __typename: "User",
+      firstName: "Ging",
+      lastName: "Freecss",
+    });
+
+    getLastAdapter()?.mutate(updateUserMutation);
+
+    await act(delay);
+    await act(delay);
+
+    expect(result.current).toEqual({
+      id: 1,
+      __typename: "User",
+      firstName: "Ging",
+      lastName: "Freecss",
+    });
+  });
 });
 
 describe("entity", () => {
   test("modify", async () => {
     let renders = 0;
-    const wrapper = createMockProvider();
+    const [wrapper, getLastAdapter] = createMockProvider();
     const userQuery = query<{
       user: { firstName: string; lastName: string; fullName: string };
     }>(() => ({ document: USER_GQL, require: [fullNameComputedField] }));
@@ -291,7 +361,7 @@ describe("entity", () => {
     const todoListQuery = query<{
       todos: { id: number; __typename: string }[];
     }>(TODO_LIST_GQL);
-    const wrapper = createMockProvider();
+    const [wrapper, getLastAdapter] = createMockProvider();
     const { result } = renderHook(
       () => {
         return useAdapter().use(todoListQuery)[0].todos;
@@ -344,7 +414,7 @@ describe("persist", () => {
         lastName: string;
       };
     }>(USER_GQL);
-    const wrapper = createMockProvider();
+    const [wrapper, getLastAdapter] = createMockProvider();
     // write data
     renderHook(
       () => {
@@ -413,7 +483,7 @@ describe("persist", () => {
 describe("useAdapter", () => {
   test("union type", async () => {
     let flag = false;
-    const wrapper = createMockProvider();
+    const [wrapper] = createMockProvider();
     const userQuery = query<{
       user: {
         id: number;
