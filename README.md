@@ -163,7 +163,10 @@ const ExtraInfo2Query = query(GET_EXTRA_2_INFO_QUERY);
 const useCurrentUser = () => {
   const { use } = useAdapter();
   const [profile] = use(MeQuery);
-  // To handle multiple queries simultaneously without the need to manage loading and error states individually (as required in a sequential, waterfall execution method), consider implementing a parallel or batch request strategy. This approach allows for the concurrent processing of multiple queries, thereby optimizing efficiency and response time. It's essential, however, to ensure proper error handling and response parsing for each query within the batch to maintain robustness and reliability in your application.
+  // To handle multiple queries simultaneously without the need to manage loading and error states individually (as required in a sequential,
+  // waterfall execution method), consider implementing a parallel or batch request strategy. This approach allows for the concurrent processing of multiple queries,
+  // thereby optimizing efficiency and response time.
+  // It's essential, however, to ensure proper error handling and response parsing for each query within the batch to maintain robustness and reliability in your application.
   const [permissions, articles, extra] = use(
     PermissionsQuery.with({ variables: { id: profile.id } }),
     ArticleListQuery.with({ variables: { id: profile.id } }),
@@ -262,12 +265,14 @@ import { from } from "apollo-booster";
 const adapter = from(client);
 
 adapter.persist({
-  // This method is triggered during the initiation of the cache restoration process, specifically for reading persisted data from the data source.
+  // This method is triggered during the initiation of the cache restoration process,
+  // specifically for reading persisted data from the data source.
   read() {
     return JSON.parse(localStorage.getItem("app"));
   },
 
-  // The process of reading persisted data can be asynchronous, allowing for the retrieval of persisted data from a server
+  // The process of reading persisted data can be asynchronous,
+  // allowing for the retrieval of persisted data from a server
   async read() {
     return fetch("api/to/return/app/data");
   },
