@@ -330,6 +330,7 @@ export const createInternalAdapter = (client: Client) => {
         client.writeQuery({
           ...cacheOptions,
           data: merge(prev, result.data),
+          broadcast: true,
         });
       }
 
