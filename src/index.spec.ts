@@ -544,7 +544,12 @@ describe("pagination", () => {
     const todoListQuery = query<
       { todos: { id: number; __typename: string }[] },
       { offset: number }
-    >(TODO_LIST_GQL);
+    >(() => ({
+      document: TODO_LIST_GQL,
+      merge: (prev, incoming) => ({
+        todos: [...prev.todos, ...incoming.todos],
+      }),
+    }));
     const { result } = renderHook(
       () => {
         return useAdapter().use(todoListQuery)[0];
@@ -561,10 +566,7 @@ describe("pagination", () => {
     });
     act(() => {
       getLastAdapter()?.fetchMore(
-        todoListQuery.with({ variables: { offset: 3 } }),
-        (prev, incoming) => ({
-          todos: [...prev.todos, ...incoming.todos],
-        })
+        todoListQuery.with({ variables: { offset: 3 } })
       );
     });
     await act(delay);

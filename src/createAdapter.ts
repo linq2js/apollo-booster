@@ -313,23 +313,27 @@ export const createInternalAdapter = (client: Client) => {
       const options = createOperationOptions(query);
       return adapter.ref(options).state.refetch(hardRefetch);
     },
-    async fetchMore(query, merge) {
-      const { document, variables } = createOperationOptions(query);
+    async fetchMore(query) {
+      const { document, variables, merge } = createOperationOptions(query);
       const cacheOptions = { query: document, variables };
       const prev = client.readQuery(cacheOptions);
       const result = await client.query({
         ...cacheOptions,
         fetchPolicy: "network-only",
       });
+
       if (result.error) {
         throw result.error;
       }
-      const data = prev ? merge(prev, result.data) : result.data;
-      client.writeQuery({
-        ...cacheOptions,
-        data,
-      });
-      return data;
+
+      if (prev && merge) {
+        client.writeQuery({
+          ...cacheOptions,
+          data: merge(prev, result.data),
+        });
+      }
+
+      return result.data;
     },
     persist(options) {
       if (persistApiInstalled) {

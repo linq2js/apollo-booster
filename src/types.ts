@@ -43,6 +43,13 @@ export type OptionsBuilder<TData extends EO, TVariables extends EO> = (
   variables?: object;
   require?: ResolverDef[];
   document: TypedDocumentNode<TData, unknown>;
+  /**
+   * This method is activated when the adapter initiates an operation to retrieve more data.
+   * @param prev
+   * @param incoming
+   * @returns
+   */
+  merge?: (prev: TData, incoming: TData) => TData;
 };
 
 export type OptionsWithVariablesArgs<
@@ -200,10 +207,11 @@ export type Adapter = {
     hardRefetch?: boolean
   ): Promise<void>;
 
-  fetchMore<TData extends EO>(
-    query: QueryDef<TData, EO>,
-    merge: (prev: TData, incoming: TData) => TData
-  ): Promise<TData>;
+  /**
+   * Retrieve additional data and utilize the query's merge method to integrate the previously acquired data with the newly obtained data.
+   * @param query
+   */
+  fetchMore<TData extends EO>(query: QueryDef<TData, EO>): Promise<TData>;
 };
 
 export type Loadable<TData> = {
