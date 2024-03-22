@@ -94,7 +94,7 @@ export const isPlainObject = (
 
 export const createOperationOptions = <TData extends EO>(
   operation: QueryDef<TData, EO> | MutationDef<TData, EO>
-): OperationOptions & { document: DocumentNode; require?: ResolverDef[] } => {
+) => {
   const options =
     "options" in operation
       ? (operation.options as OperationOptions | undefined)

@@ -146,20 +146,21 @@ export const createInternalAdapter = (client: Client) => {
   };
   const adapter: InternalAdapter = {
     client,
-    ref({ document, variables = {}, fetchPolicy }) {
+    ref({ key, document, variables = {}, fetchPolicy }) {
       let queryRefByKeyCache = queryRefByDocumentCache.get(document);
       if (!queryRefByKeyCache) {
         queryRefByKeyCache = new Map();
         queryRefByDocumentCache.set(document, queryRefByKeyCache);
       }
-      const queryKey = `${fetchPolicy}:${JSON.stringify(
-        variables,
-        stringifyReplacer
-      )}`;
+      const queryKey = key || JSON.stringify(variables, stringifyReplacer);
       let queryRef = queryRefByKeyCache.get(queryKey);
       if (!queryRef) {
         queryRef = new QueryRef(
-          client.watchQuery({ query: document, variables, fetchPolicy })
+          client.watchQuery({
+            query: document,
+            variables,
+            fetchPolicy,
+          })
         );
         queryRefByKeyCache.set(queryKey, queryRef);
       }
@@ -307,6 +308,28 @@ export const createInternalAdapter = (client: Client) => {
       } else {
         callback(adapter);
       }
+    },
+    refetch(query, hardRefetch) {
+      const options = createOperationOptions(query);
+      return adapter.ref(options).state.refetch(hardRefetch);
+    },
+    async fetchMore(query, merge) {
+      const { document, variables } = createOperationOptions(query);
+      const cacheOptions = { query: document, variables };
+      const prev = client.readQuery(cacheOptions);
+      const result = await client.query({
+        ...cacheOptions,
+        fetchPolicy: "network-only",
+      });
+      if (result.error) {
+        throw result.error;
+      }
+      const data = prev ? merge(prev, result.data) : result.data;
+      client.writeQuery({
+        ...cacheOptions,
+        data,
+      });
+      return data;
     },
     persist(options) {
       if (persistApiInstalled) {

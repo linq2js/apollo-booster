@@ -1,6 +1,7 @@
 import {
   ApolloClient,
   DocumentNode,
+  FetchMoreOptions,
   FetchPolicy,
   Reference,
   Resolver,
@@ -39,6 +40,7 @@ export type QueryDef<TData extends EO, TVariables extends EO> = {
 export type OptionsBuilder<TData extends EO, TVariables extends EO> = (
   variables: TVariables
 ) => {
+  key?: string;
   variables?: object;
   require?: ResolverDef[];
   document: TypedDocumentNode<TData, unknown>;
@@ -81,6 +83,7 @@ export type ReactiveVarDef<T> = {
 };
 
 export type QueryRefOptions = {
+  key?: string;
   document: DocumentNode;
   variables?: EO;
   fetchPolicy?: WatchQueryFetchPolicy;
@@ -192,6 +195,16 @@ export type Adapter = {
    * @param callback
    */
   ready(callback: (adapter: Adapter) => void): void;
+
+  refetch<TData extends EO>(
+    query: QueryDef<TData, EO>,
+    hardRefetch?: boolean
+  ): Promise<void>;
+
+  fetchMore<TData extends EO>(
+    query: QueryDef<TData, EO>,
+    merge: (prev: TData, incoming: TData) => TData
+  ): Promise<TData>;
 };
 
 export type Loadable<TData> = {

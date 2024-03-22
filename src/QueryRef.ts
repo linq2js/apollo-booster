@@ -91,7 +91,7 @@ export class QueryRef<T> {
           });
           notify();
         }
-        this.observable.refetch().then(handleResult, handleError);
+        return this.observable.refetch().then(handleResult, handleError);
       },
       dispose() {
         listeners.length = 0;

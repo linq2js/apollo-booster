@@ -35,8 +35,8 @@ const DOUBLED_COUNT_GQL = gql`
 `;
 
 const TODO_LIST_GQL = gql`
-  query {
-    todos {
+  query ($offset: Int) {
+    todos(offset: $offset) @connection(key: "todoList") {
       id
     }
   }
@@ -77,6 +77,18 @@ const defaultMocks: MockedProviderProps["mocks"] = [
           { __typename: "Todo", id: 1 },
           { __typename: "Todo", id: 2 },
           { __typename: "Todo", id: 3 },
+        ],
+      },
+    },
+  },
+  {
+    request: { query: TODO_LIST_GQL, variables: { offset: 3 } },
+    result: {
+      data: {
+        todos: [
+          { __typename: "Todo", id: 4 },
+          { __typename: "Todo", id: 5 },
+          { __typename: "Todo", id: 6 },
         ],
       },
     },
@@ -523,5 +535,49 @@ describe("useAdapter", () => {
     expect(result.current.r1.user).not.toBeUndefined();
     expect(result.current.r2).toBe(1);
     expect(result.current.r3).toEqual({ user: expect.anything() });
+  });
+});
+
+describe("pagination", () => {
+  test("fetchMore", async () => {
+    const [wrapper, getLastAdapter] = createMockProvider();
+    const todoListQuery = query<
+      { todos: { id: number; __typename: string }[] },
+      { offset: number }
+    >(TODO_LIST_GQL);
+    const { result } = renderHook(
+      () => {
+        return useAdapter().use(todoListQuery)[0];
+      },
+      { wrapper }
+    );
+    await act(delay);
+    expect(result.current).toEqual({
+      todos: [
+        { __typename: "Todo", id: 1 },
+        { __typename: "Todo", id: 2 },
+        { __typename: "Todo", id: 3 },
+      ],
+    });
+    act(() => {
+      getLastAdapter()?.fetchMore(
+        todoListQuery.with({ variables: { offset: 3 } }),
+        (prev, incoming) => ({
+          todos: [...prev.todos, ...incoming.todos],
+        })
+      );
+    });
+    await act(delay);
+
+    expect(result.current).toEqual({
+      todos: [
+        { __typename: "Todo", id: 1 },
+        { __typename: "Todo", id: 2 },
+        { __typename: "Todo", id: 3 },
+        { __typename: "Todo", id: 4 },
+        { __typename: "Todo", id: 5 },
+        { __typename: "Todo", id: 6 },
+      ],
+    });
   });
 });
