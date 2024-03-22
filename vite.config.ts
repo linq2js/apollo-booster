@@ -65,7 +65,7 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: ["react", "react-dom", "@wry/equality"],
+      external: ["react", "react-dom", "@wry/equality", "@apollo/client"],
       plugins: [
         typescriptPaths({
           preserveExtensions: true,

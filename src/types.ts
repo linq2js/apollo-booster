@@ -42,7 +42,7 @@ export type OptionsBuilder<TData extends EO, TVariables extends EO> = (
   key?: string;
   variables?: object;
   require?: ResolverDef[];
-  document: TypedDocumentNode<TData, unknown>;
+  document: TypedDocumentNode<TData, any>;
   /**
    * This method is activated when the adapter initiates an operation to retrieve more data.
    * @param prev
