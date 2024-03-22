@@ -1,7 +1,6 @@
 import {
   ApolloClient,
   DocumentNode,
-  FetchMoreOptions,
   FetchPolicy,
   Reference,
   Resolver,
