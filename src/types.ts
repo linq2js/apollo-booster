@@ -56,7 +56,7 @@ export type OptionsWithVariablesArgs<
   TVariables,
   TOptions extends EO
 > = EO extends TVariables
-  ? [options?: TOptions]
+  ? [options?: TOptions & { variables?: TVariables }]
   : [options: { variables: TVariables } & TOptions];
 
 export type MutationDef<TData extends EO, TVariables extends EO> = {
@@ -209,9 +209,33 @@ export type Adapter = {
 
   /**
    * Retrieve additional data and utilize the query's merge method to integrate the previously acquired data with the newly obtained data.
+   * For implementing pagination, incorporate the `@connection` directive into the query. This approach addresses the issue of duplicate field entries in the cache.
+   * For more details, refer to the Apollo GraphQL documentation on advanced caching topics, specifically the section on the `@connection` directive.
+   * https://www.apollographql.com/docs/react/caching/advanced-topics/#the-connection-directive
    * @param query
    */
   fetchMore<TData extends EO>(query: QueryDef<TData, EO>): Promise<TData>;
+
+  /**
+   * Monitor changes from queries and reactive variables.
+   * @param def
+   * @param callback
+   */
+  watch<
+    T extends
+      | QueryDef<any, EO>
+      | ReactiveVarDef<any>
+      | readonly (QueryDef<any, EO> | ReactiveVarDef<any>)[]
+  >(
+    def: T,
+    callback: (
+      data: T extends ReactiveVarDef<infer D>
+        ? D
+        : T extends QueryDef<infer D, EO>
+        ? D
+        : any
+    ) => void
+  ): VoidFunction;
 };
 
 export type Loadable<TData> = {

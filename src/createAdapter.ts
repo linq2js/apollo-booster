@@ -242,21 +242,23 @@ export const createInternalAdapter = (client: Client) => {
     set(input: unknown, data: any): any {
       if (isQueryDef(input)) {
         const options = createOperationOptions(input);
-        const queryOptions = {
+        const readWriteOptions = {
           query: options.document,
           variables: options.variables,
         };
-        const prev = client.readQuery(queryOptions);
+        const prev = client.readQuery(readWriteOptions);
         if (typeof data === "function") {
-          if (!prev) return;
+          if (!prev) {
+            return;
+          }
           data = data(prev);
         }
-        client.writeQuery({ ...queryOptions, data });
+        client.writeQuery({ ...readWriteOptions, data });
 
         if (!prev) return NOOP;
 
         return () => {
-          client.writeQuery({ ...queryOptions, data: prev });
+          client.writeQuery({ ...readWriteOptions, data: prev });
         };
       }
 
@@ -313,6 +315,42 @@ export const createInternalAdapter = (client: Client) => {
       const options = createOperationOptions(query);
       return adapter.ref(options).state.refetch(hardRefetch);
     },
+    watch(def: unknown, callback: AnyFunc) {
+      const unsubscribeAll = new Set<VoidFunction>();
+      (Array.isArray(def) ? def : [def]).forEach((d) => {
+        if (isQueryDef(d)) {
+          const options = createOperationOptions(d);
+          const queryRef = adapter.ref(options);
+          unsubscribeAll.add(
+            queryRef.state.subscribe(() => {
+              if (!queryRef.state.loading && !queryRef.state.error) {
+                callback(queryRef.state.data);
+              }
+            })
+          );
+          return;
+        }
+        if (isReactiveVarDef(d)) {
+          const reactiveVar = getReactiveVar(d);
+          const subscribe = () => {
+            unsubscribeAll.add(
+              reactiveVar.onNextChange((value) => {
+                callback(value);
+                // re-subscribe
+                subscribe();
+              })
+            );
+          };
+          subscribe();
+          return;
+        }
+      });
+
+      return () => {
+        unsubscribeAll.forEach((x) => x());
+        unsubscribeAll.clear();
+      };
+    },
     async fetchMore(query) {
       const { document, variables, merge } = createOperationOptions(query);
       const cacheOptions = { query: document, variables };
@@ -330,7 +368,6 @@ export const createInternalAdapter = (client: Client) => {
         client.writeQuery({
           ...cacheOptions,
           data: merge(prev, result.data),
-          broadcast: true,
         });
       }
 

@@ -63,24 +63,24 @@ export const useAsync = <T>(options?: UseAsyncOptions<T>) => {
       get data() {
         return prevPromise?.data;
       },
-      of(promise: Promise<T>) {
-        if (promise !== prevPromise) {
+      of<R extends T>(promise: Promise<R>): PromiseLike<R> {
+        if (!Object.is(promise, prevPromise)) {
           unsubscribe?.();
           prevPromise = observablePromise(promise);
           status = "loading";
           unsubscribe = prevPromise.subscribe(() => {
-            if (prevPromise !== promise) {
+            if (!Object.is(promise, prevPromise)) {
               return;
             }
 
-            if (prevPromise.error) {
+            if (prevPromise?.error) {
               status = "error";
               reject?.(prevPromise.error);
               current.options?.onError?.(prevPromise.error);
             } else {
               status = "success";
-              resolve?.(prevPromise.data as T);
-              current.options?.onSuccess?.(prevPromise.data as T);
+              resolve?.(prevPromise?.data as T);
+              current.options?.onSuccess?.(prevPromise?.data as T);
             }
 
             if (!current.rendering) {
@@ -96,7 +96,7 @@ export const useAsync = <T>(options?: UseAsyncOptions<T>) => {
             // promise is resolved or rejected
           }
         }
-        return api;
+        return api as any;
       },
       then(...args: Parameters<Promise<T>["then"]>) {
         if (!prevPromise) {

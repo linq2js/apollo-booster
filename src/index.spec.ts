@@ -6,7 +6,7 @@ import {
   useApolloClient,
 } from "@apollo/client";
 import { createAdapter } from "./createAdapter";
-import { from, query, reactive, mutation, resolver, typed } from ".";
+import { from, query, reactive, mutation, resolver, typed, useAsync } from ".";
 import {
   ComponentClass,
   FunctionComponent,
@@ -14,6 +14,7 @@ import {
   ReactNode,
   Suspense,
   createElement,
+  useEffect,
 } from "react";
 import { screen, act, renderHook } from "@testing-library/react";
 import { useAdapter } from "./useAdapter";
@@ -42,13 +43,23 @@ const TODO_LIST_GQL = gql`
   }
 `;
 
-const USER_GQL = gql`
-  query {
+const USER_WITH_FULL_NAME_GQL = gql`
+  query UserQuery {
     user {
       id
       firstName
       lastName
       fullName @client
+    }
+  }
+`;
+
+const USER_GQL = gql`
+  query UserQuery {
+    user {
+      id
+      firstName
+      lastName
     }
   }
 `;
@@ -90,6 +101,19 @@ const defaultMocks: MockedProviderProps["mocks"] = [
           { __typename: "Todo", id: 5 },
           { __typename: "Todo", id: 6 },
         ],
+      },
+    },
+  },
+  {
+    request: { query: USER_WITH_FULL_NAME_GQL },
+    result: {
+      data: {
+        user: {
+          id: 1,
+          __typename: "User",
+          firstName: "Ging",
+          lastName: "Freecss",
+        },
       },
     },
   },
@@ -240,7 +264,7 @@ describe("resolver", () => {
     const userQuery = query<{
       user: { firstName: string; lastName: string; fullName: string };
     }>(() => ({
-      document: USER_GQL,
+      document: USER_WITH_FULL_NAME_GQL,
       require: [fullNameComputedField],
     }));
     const { result } = renderHook(
@@ -266,7 +290,7 @@ describe("resolver", () => {
     const [wrapper, getLastAdapter] = createMockProvider();
     const userQuery = query<{
       user: { firstName: string; lastName: string };
-    }>(() => ({ document: USER_GQL }));
+    }>(() => ({ document: USER_WITH_FULL_NAME_GQL }));
     const updateUserResolver = resolver("Mutation.updateUser", () => () => {
       const result = typed(
         { id: 1, firstName: "updated firstName" },
@@ -326,7 +350,10 @@ describe("entity", () => {
     const [wrapper, getLastAdapter] = createMockProvider();
     const userQuery = query<{
       user: { firstName: string; lastName: string; fullName: string };
-    }>(() => ({ document: USER_GQL, require: [fullNameComputedField] }));
+    }>(() => ({
+      document: USER_WITH_FULL_NAME_GQL,
+      require: [fullNameComputedField],
+    }));
     const { result } = renderHook(
       () => {
         renders++;
@@ -437,7 +464,7 @@ describe("persist", () => {
         firstName: string;
         lastName: string;
       };
-    }>(USER_GQL);
+    }>(USER_WITH_FULL_NAME_GQL);
     const [wrapper, getLastAdapter] = createMockProvider();
     // write data
     renderHook(
@@ -515,7 +542,7 @@ describe("useAdapter", () => {
         firstName: string;
         lastName: string;
       };
-    }>(USER_GQL);
+    }>(USER_WITH_FULL_NAME_GQL);
 
     const { result, rerender } = renderHook(
       () => {
@@ -538,6 +565,87 @@ describe("useAdapter", () => {
   });
 });
 
+describe("watch", () => {
+  test("variable", () => {
+    const callback = jest.fn();
+    const countVar = reactive(1);
+    const [, wrapper] = createTestAdapter();
+    const { result, unmount } = renderHook(
+      () => {
+        const { use, watch, set } = useAdapter();
+        const [count] = use(countVar);
+        useEffect(() => {
+          return watch(countVar, callback);
+        }, [watch, countVar]);
+
+        return {
+          count,
+          increment() {
+            set(countVar, (prev) => prev + 1);
+          },
+        };
+      },
+      { wrapper }
+    );
+
+    expect(result.current.count).toBe(1);
+    act(() => result.current.increment());
+    expect(result.current.count).toBe(2);
+    act(() => result.current.increment());
+    expect(result.current.count).toBe(3);
+    expect(callback).toHaveBeenCalledTimes(2);
+
+    unmount();
+
+    act(() => result.current.increment());
+    expect(callback).toHaveBeenCalledTimes(2);
+  });
+
+  test("query", async () => {
+    const [wrapper] = createMockProvider();
+    const callback = jest.fn();
+    const userQuery = query<{
+      user: { firstName: string; lastName: string };
+    }>(USER_GQL);
+    const { result, unmount } = renderHook(
+      () => {
+        const { use, watch, set } = useAdapter();
+        const [data] = use(userQuery);
+        useEffect(() => {
+          return watch(userQuery, callback);
+        }, [watch]);
+
+        return {
+          data,
+          update() {
+            set(userQuery, (prev) => ({
+              ...prev,
+              user: {
+                ...prev.user,
+                firstName: prev.user.firstName + ",updated",
+              },
+            }));
+          },
+        };
+      },
+      { wrapper }
+    );
+    expect(callback).toHaveBeenCalledTimes(0);
+    await act(delay);
+    expect(callback).toHaveBeenCalledTimes(0);
+    act(() => result.current.update());
+    await act(delay);
+    act(() => result.current.update());
+    await act(delay);
+    expect(callback).toHaveBeenCalledTimes(2);
+
+    unmount();
+
+    act(() => result.current.update());
+    expect(callback).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("pagination", () => {
   test("fetchMore", async () => {
     const [wrapper, getLastAdapter] = createMockProvider();
@@ -552,12 +660,14 @@ describe("pagination", () => {
     }));
     const { result } = renderHook(
       () => {
-        return useAdapter().use(todoListQuery)[0];
+        const data = useAdapter().use(todoListQuery)[0];
+        const loadable = useAsync();
+        return { data, loadable };
       },
       { wrapper }
     );
     await act(delay);
-    expect(result.current).toEqual({
+    expect(result.current.data).toEqual({
       todos: [
         { __typename: "Todo", id: 1 },
         { __typename: "Todo", id: 2 },
@@ -565,13 +675,15 @@ describe("pagination", () => {
       ],
     });
     act(() => {
-      getLastAdapter()?.fetchMore(
-        todoListQuery.with({ variables: { offset: 3 } })
+      result.current.loadable.of(
+        getLastAdapter()?.fetchMore(
+          todoListQuery.with({ variables: { offset: 3 } })
+        ) as any
       );
     });
     await act(delay);
 
-    expect(result.current).toEqual({
+    expect(result.current.data).toEqual({
       todos: [
         { __typename: "Todo", id: 1 },
         { __typename: "Todo", id: 2 },
