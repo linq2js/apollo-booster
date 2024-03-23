@@ -109,7 +109,7 @@ export class QueryRef<T> {
           if (i !== -1) {
             listeners.splice(i, 1);
             if (!listeners.length) {
-              this.disposeState();
+              this.dispose();
             }
           }
         };
@@ -128,10 +128,17 @@ export class QueryRef<T> {
     this.observable = observable;
   }
 
-  private disposeState() {
-    this._disposeTimeout = setTimeout(() => {
-      this._state?.dispose();
-      this._state = undefined;
-    }, 5 * 1000);
+  dispose(immediate?: boolean) {
+    const disposeAction = () => {
+      () => {
+        this._state?.dispose();
+        this._state = undefined;
+      };
+    };
+    if (immediate) {
+      disposeAction();
+    } else {
+      this._disposeTimeout = setTimeout(disposeAction, 5 * 1000);
+    }
   }
 }

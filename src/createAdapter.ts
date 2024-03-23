@@ -102,10 +102,7 @@ export const createInternalAdapter = (client: Client) => {
   let existingAdapter = adapters.get(client);
   if (existingAdapter) return existingAdapter;
   const registeredResolvers = new Set<ResolverDef>();
-  let queryRefByDocumentCache = new WeakMap<
-    DocumentNode,
-    Map<string, QueryRef<any>>
-  >();
+  let queryRefGroups = new Map<DocumentNode, Map<string, QueryRef<any>>>();
   let restoring: Promise<void> | undefined;
   let persistApiInstalled = false;
   let persisted: PersistedData | undefined;
@@ -147,10 +144,10 @@ export const createInternalAdapter = (client: Client) => {
   const adapter: InternalAdapter = {
     client,
     ref({ key, document, variables = {}, fetchPolicy }) {
-      let queryRefByKeyCache = queryRefByDocumentCache.get(document);
+      let queryRefByKeyCache = queryRefGroups.get(document);
       if (!queryRefByKeyCache) {
         queryRefByKeyCache = new Map();
-        queryRefByDocumentCache.set(document, queryRefByKeyCache);
+        queryRefGroups.set(document, queryRefByKeyCache);
       }
       const queryKey = key || JSON.stringify(variables, stringifyReplacer);
       let queryRef = queryRefByKeyCache.get(queryKey);
@@ -420,14 +417,15 @@ export const createInternalAdapter = (client: Client) => {
     getReactiveVar,
   };
 
-  const originClearStore = client.clearStore;
-  Object.assign(client, {
-    clearStore() {
-      originClearStore.call(client);
-      queryRefByDocumentCache = new WeakMap();
-      reactiveVars.clear();
-    },
-  });
+  const cleanup = async () => {
+    queryRefGroups.forEach((group) =>
+      group.forEach((re) => re.state.dispose())
+    );
+    reactiveVars.clear();
+  };
+
+  client.onClearStore(cleanup);
+  client.onResetStore(cleanup);
 
   adapters.set(client, adapter);
 
@@ -469,6 +467,7 @@ const buildFields = (id: string, props: Record<string, any>) => {
       };
       return;
     }
+
     if (typeof value === "function") {
       if (!dynamicModifiers) {
         dynamicModifiers = {};
