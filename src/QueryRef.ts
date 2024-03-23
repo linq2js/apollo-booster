@@ -5,12 +5,15 @@ import {
   ObservableQuery,
 } from "@apollo/client";
 import equal from "@wry/equality";
+import { EventEmitter } from "./EventEmitter";
 
 export class QueryRef<T> {
   public observable: ObservableQuery<T>;
   private _state: ReturnType<typeof this.createState> | undefined;
   private _data: T | undefined;
   private _disposeTimeout: any;
+
+  readonly tags: string[];
 
   createState() {
     let data: T | undefined;
@@ -19,7 +22,14 @@ export class QueryRef<T> {
     let promise: Promise<void>;
     let resolve: VoidFunction | undefined;
     let reject: VoidFunction | undefined;
-    const listeners = new Array<VoidFunction>();
+    const onChange = new EventEmitter({
+      onListenerAdded: () => {
+        clearTimeout(this._disposeTimeout);
+      },
+      onNoListener: () => {
+        this.dispose();
+      },
+    });
 
     const lastResult = this.observable.getLastResult();
     if (!lastResult?.loading) {
@@ -45,7 +55,6 @@ export class QueryRef<T> {
       });
     }
 
-    const notify = () => listeners.slice().forEach((x) => x());
     const handleResult = (result: ApolloQueryResult<T>) => {
       if (result.loading) return;
       data = result.data;
@@ -54,14 +63,14 @@ export class QueryRef<T> {
       loading = false;
       resolve?.();
       promise = Promise.resolve();
-      notify();
+      onChange.emit();
     };
     const handleError = (e: ApolloError) => {
       error = e;
       loading = false;
       reject?.();
       promise = Promise.reject(e);
-      notify();
+      onChange.emit();
     };
     const subscription = this.observable
       .filter((result) => {
@@ -89,31 +98,15 @@ export class QueryRef<T> {
           promise = new Promise((...args) => {
             [resolve, reject] = args;
           });
-          notify();
+          onChange.emit();
         }
         return this.observable.refetch().then(handleResult, handleError);
       },
       dispose() {
-        listeners.length = 0;
+        onChange.clear();
         subscription.unsubscribe();
       },
-      notify,
-      subscribe: (listener: VoidFunction): VoidFunction => {
-        clearTimeout(this._disposeTimeout);
-        listeners.push(listener);
-        let active = true;
-        return () => {
-          if (!active) return;
-          active = false;
-          const i = listeners.indexOf(listener);
-          if (i !== -1) {
-            listeners.splice(i, 1);
-            if (!listeners.length) {
-              this.dispose();
-            }
-          }
-        };
-      },
+      subscribe: onChange.on,
     };
   }
 
@@ -124,16 +117,15 @@ export class QueryRef<T> {
     return this._state;
   }
 
-  constructor(observable: ObservableQuery<T>) {
+  constructor(observable: ObservableQuery<T>, tags: string[]) {
     this.observable = observable;
+    this.tags = tags;
   }
 
   dispose(immediate?: boolean) {
     const disposeAction = () => {
-      () => {
-        this._state?.dispose();
-        this._state = undefined;
-      };
+      this._state?.dispose();
+      this._state = undefined;
     };
     if (immediate) {
       disposeAction();

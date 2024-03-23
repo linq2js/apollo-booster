@@ -1,14 +1,15 @@
 import {
   ComputedDef,
   EO,
+  FragmentDef,
   MutationDef,
-  OperationOptions,
   QueryDef,
   ReactiveVarDef,
   ResolverDef,
 } from "./types";
 
 export const QUERY_DEF_TYPE = Symbol("queryDef");
+export const FRAGMENT_DEF_TYPE = Symbol("fragmentDef");
 export const RESOLVER_DEF_TYPE = Symbol("resolverDef");
 export const MUTATION_DEF_TYPE = Symbol("mutationDef");
 export const REACTIVE_VAR_DEF_TYPE = Symbol("reactiveVarDef");
@@ -39,6 +40,12 @@ export const isReactiveVarDef = <T>(
   value: unknown
 ): value is ReactiveVarDef<T> => {
   return isType(value, REACTIVE_VAR_DEF_TYPE);
+};
+
+export const isFragmentDef = <D extends EO, V extends EO>(
+  value: unknown
+): value is FragmentDef<D, V> => {
+  return isType(value, FRAGMENT_DEF_TYPE);
 };
 
 export const isMutationDef = <D extends EO, V extends EO>(
@@ -91,20 +98,6 @@ export const isPlainObject = (
   return proto === baseProto;
 };
 
-export const createOperationOptions = <TData extends EO>(
-  operation: QueryDef<TData, EO> | MutationDef<TData, EO>
-) => {
-  const options =
-    "options" in operation
-      ? (operation.options as OperationOptions | undefined)
-      : undefined;
-  return {
-    fetchPolicy: options?.fetchPolicy,
-    ...operation.create((options?.variables as any) ?? EMPTY_OBJECT),
-    ...options,
-  };
-};
-
 export const delay = (ms = 0) => {
   let timeoutId: any;
   return Object.assign(
@@ -117,4 +110,36 @@ export const delay = (ms = 0) => {
       },
     }
   );
+};
+
+let uniqueId = 1;
+let uniqueIdCache = new WeakMap();
+export const getObjectId = (value: object) => {
+  if (!value) {
+    throw new Error("Value must be object type");
+  }
+  let id = uniqueIdCache.get(value);
+  if (!id) {
+    id = uniqueId++;
+    uniqueIdCache.set(value, id);
+  }
+
+  return id;
+};
+
+const orderedStringifyReplacer = (_: string, value: any) => {
+  // We sort object properties to ensure that multiple objects with identical properties yield the same stringify results.
+  if (value && typeof value === "object") {
+    const proto = Object.getPrototypeOf(value);
+    if (proto === Object.prototype || proto === null) {
+      const props = Object.keys(value);
+      return props.map((prop) => [prop, value[prop]]);
+    }
+  }
+
+  return value;
+};
+
+export const orderedStringify = (value: any) => {
+  return JSON.stringify(value, orderedStringifyReplacer);
 };

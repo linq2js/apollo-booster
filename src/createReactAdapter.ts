@@ -1,11 +1,7 @@
 import { createInternalAdapter } from "./createAdapter";
-import { Client, EO, QueryDef, ReactiveVarDef } from "./types";
-import {
-  RESOLVED,
-  createOperationOptions,
-  isQueryDef,
-  isReactiveVarDef,
-} from "./utils";
+import { createOperationOptions } from "./operationDef";
+import { Client, EO, FragmentDef, QueryDef, ReactiveVarDef } from "./types";
+import { RESOLVED, isFragmentDef, isQueryDef, isReactiveVarDef } from "./utils";
 
 export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
   const adapter = createInternalAdapter(client);
@@ -21,9 +17,38 @@ export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
     subscribeAll() {
       shouldSubscribe.forEach((x) => x());
     },
-    use(...defs: readonly (QueryDef<any, EO> | ReactiveVarDef<any>)[]): any {
+    use(
+      ...defs: readonly (
+        | QueryDef<any, EO>
+        | ReactiveVarDef<any>
+        | FragmentDef<any, EO>
+      )[]
+    ): any {
       const promises: Promise<any>[] = [];
       const results: any[] = [];
+
+      const handleQueryDef = (def: QueryDef<EO, EO>, index: number) => {
+        const options = createOperationOptions(def);
+        if (options.require && adapter.require(...options.require)) {
+          promises.push(RESOLVED);
+          return;
+        }
+
+        const queryRef = adapter.getQueryRef(options);
+        if (queryRef.state.loading) {
+          promises.push(queryRef.state.promise);
+          return;
+        }
+        if (queryRef.state.error) {
+          throw queryRef.state.error;
+        }
+        shouldSubscribe.push(() =>
+          unsubscribeAll.add(queryRef.state.subscribe(onChange))
+        );
+
+        results[index] = queryRef.state.data;
+      };
+
       defs.forEach((def, index) => {
         // handle reactive var
         if (isReactiveVarDef(def)) {
@@ -34,27 +59,34 @@ export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
           results[index] = reactiveVar();
           return;
         }
-        if (isQueryDef(def)) {
-          const options = createOperationOptions(def as QueryDef<any, EO>);
-          if (options.require && adapter.require(...options.require)) {
-            promises.push(RESOLVED);
-            return;
-          }
+        if (isFragmentDef(def)) {
+          const options = createOperationOptions(def);
+          const fragmentRef = adapter.getFragmentRef({
+            document: (options as any).document,
+            from: options.from,
+          });
 
-          const queryRef = adapter.ref(options);
-          if (queryRef.state.loading) {
-            promises.push(queryRef.state.promise);
-            return;
-          }
-          if (queryRef.state.error) {
-            throw queryRef.state.error;
+          const data = fragmentRef.data();
+          // data is not ready
+          if (!data) {
+            if (options.fallback) {
+              const [prop, queryDef] = options.fallback;
+              handleQueryDef(queryDef, index);
+              results[index] = results[index]?.[prop];
+            } else {
+              throw fragmentRef.ready();
+            }
+          } else {
+            results[index] = data;
           }
           shouldSubscribe.push(() =>
-            unsubscribeAll.add(queryRef.state.subscribe(onChange))
+            unsubscribeAll.add(fragmentRef.subscribe(onChange))
           );
-
-          results[index] = queryRef.state.data;
           return;
+        }
+
+        if (isQueryDef(def)) {
+          return handleQueryDef(def, index);
         }
 
         results[index] = def;

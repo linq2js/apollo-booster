@@ -6,7 +6,16 @@ import {
   useApolloClient,
 } from "@apollo/client";
 import { createAdapter } from "./createAdapter";
-import { from, query, reactive, mutation, resolver, typed, useAsync } from ".";
+import {
+  from,
+  query,
+  reactive,
+  mutation,
+  resolver,
+  typed,
+  useAsync,
+  fragment,
+} from ".";
 import {
   ComponentClass,
   FunctionComponent,
@@ -16,7 +25,7 @@ import {
   createElement,
   useEffect,
 } from "react";
-import { screen, act, renderHook } from "@testing-library/react";
+import { screen, act, renderHook, render } from "@testing-library/react";
 import { useAdapter } from "./useAdapter";
 import { ErrorBoundary } from "react-error-boundary";
 import { delay } from "./utils";
@@ -59,6 +68,15 @@ const USER_GQL = gql`
     user {
       id
       firstName
+      lastName
+    }
+  }
+`;
+
+const GET_LAST_NAME_GQL = gql`
+  query GetLastNameQuery {
+    getLastName {
+      id
       lastName
     }
   }
@@ -125,6 +143,45 @@ const defaultMocks: MockedProviderProps["mocks"] = [
           id: 1,
           __typename: "User",
           firstName: "Ging",
+          lastName: "Freecss",
+        },
+      },
+    },
+  },
+  {
+    request: {
+      query: gql`
+        query {
+          user {
+            id
+            firstName
+            ...LastNameFragment
+          }
+        }
+
+        fragment LastNameFragment on User {
+          lastName
+        }
+      `,
+    },
+    result: {
+      data: {
+        user: {
+          id: 1,
+          __typename: "User",
+          firstName: "Ging",
+          lastName: "Freecss",
+        },
+      },
+    },
+  },
+  {
+    request: { query: GET_LAST_NAME_GQL, variables: { id: 1 } },
+    result: {
+      data: {
+        getLastName: {
+          id: 1,
+          __typename: "User",
           lastName: "Freecss",
         },
       },
@@ -693,5 +750,147 @@ describe("pagination", () => {
         { __typename: "Todo", id: 6 },
       ],
     });
+  });
+});
+
+describe("fragment", () => {
+  test("normal fragment", async () => {
+    const [wrapper] = createMockProvider();
+    const lastNameFragment = fragment<{ lastName: string }>(gql`
+      fragment LastNameFragment on User {
+        lastName
+      }
+    `);
+    const userQuery = query<{
+      user: { id: number; firstName: string };
+    }>(gql`
+      query {
+        user {
+          id
+          firstName
+          ...LastNameFragment
+        }
+      }
+
+      ${lastNameFragment}
+    `);
+
+    const Child = (props: { id: number }) => {
+      const [{ lastName }] = useAdapter().use(
+        lastNameFragment.with({ variables: props })
+      );
+
+      return <div>{lastName}</div>;
+    };
+
+    const Parent = () => {
+      const [{ user }] = useAdapter().use(userQuery);
+      return (
+        <>
+          <div>{user.firstName}</div>
+          <Child id={user.id} />
+        </>
+      );
+    };
+
+    const { getByText } = render(<Parent />, { wrapper });
+    getByText("loading");
+    await act(delay);
+    getByText("Ging");
+    // last name already loaded
+    getByText("Freecss");
+  });
+
+  test("fragment has fallback and data is not ready", async () => {
+    // In this test scenario, the objective is to ensure that the fragment should utilize fallback query if the selected data is not ready.
+    const [wrapper] = createMockProvider();
+    const getLastNameQuery = query<
+      { getLastName: { lastName: string } },
+      { id: number }
+    >(GET_LAST_NAME_GQL);
+    const lastNameFragment = fragment<{ lastName: string }, { id: any }>(
+      gql`
+        fragment LastNameFragment on User {
+          lastName
+        }
+      `,
+      ({ id }) => ({
+        id,
+        fallback: ["getLastName", getLastNameQuery.with({ variables: { id } })],
+      })
+    );
+
+    const Child = (props: { id: number }) => {
+      const [{ lastName }] = useAdapter().use(
+        lastNameFragment.with({ variables: props })
+      );
+
+      return <div>{lastName}</div>;
+    };
+
+    const { getByText } = render(<Child id={1} />, { wrapper });
+    getByText("loading");
+    await act(delay);
+    getByText("Freecss");
+  });
+
+  test("fragment has fallback and data is ready", async () => {
+    // In this test scenario, the objective is to ensure that the fragment utilizes cached data instead of resorting to a fallback query.
+    const [wrapper] = createMockProvider();
+    const getLastNameQuery = query<
+      { getLastName: { lastName: string } },
+      { id: number }
+    >(GET_LAST_NAME_GQL);
+    const lastNameFragment = fragment<{ lastName: string }, { id: any }>(
+      gql`
+        fragment LastNameFragment on User {
+          lastName
+        }
+      `,
+      ({ id }) => ({
+        id,
+        fallback: ["getLastName", getLastNameQuery.with({ variables: { id } })],
+      })
+    );
+
+    const userQuery = query<{
+      user: { id: number; firstName: string };
+    }>(gql`
+      query {
+        user {
+          id
+          firstName
+          ...LastNameFragment
+        }
+      }
+
+      ${lastNameFragment}
+    `);
+
+    const Child = (props: { id: number }) => {
+      const [{ lastName }] = useAdapter().use(
+        lastNameFragment.with({ variables: props })
+      );
+
+      return <div>{lastName}</div>;
+    };
+
+    const Parent = () => {
+      const [{ user }] = useAdapter().use(userQuery);
+      return (
+        <>
+          <div>{user.firstName}</div>
+          <Child id={user.id} />
+        </>
+      );
+    };
+
+    const { getByText } = render(<Parent />, { wrapper });
+    getByText("loading");
+    await act(delay);
+    await act(delay);
+    getByText("Ging");
+    // last name already loaded
+    getByText("Freecss");
   });
 });

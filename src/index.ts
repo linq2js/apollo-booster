@@ -2,7 +2,8 @@ export { createAdapter as from } from "./createAdapter";
 export {
   createQueryDef as query,
   createMutationDef as mutation,
-} from "./createOperationDef";
+  createFragmentDef as fragment,
+} from "./operationDef";
 
 export { createReactiveVarDef as reactive } from "./createReactiveVarDef";
 

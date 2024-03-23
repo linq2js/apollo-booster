@@ -4,6 +4,8 @@ import {
   DocumentNode,
   ReactiveVar,
   Resolvers,
+  TypedDocumentNode,
+  WatchQueryFetchPolicy,
 } from "@apollo/client";
 import {
   Client,
@@ -12,21 +14,30 @@ import {
   ResolverDef,
   AnyFunc,
   EO,
+  QueryRefOptions,
 } from "./types";
 import {
   EMPTY_OBJECT,
   NOOP,
   RESOLVED,
-  createOperationOptions,
   isComputedDef,
   isPromiseLike,
   isQueryDef,
   isReactiveVarDef,
+  orderedStringify,
 } from "./utils";
 import { QueryRef } from "./QueryRef";
 import { Modifiers, makeVar } from "@apollo/client/cache";
+import { createOperationOptions } from "./operationDef";
+import { NestedMap } from "./NestedMap";
+import { FragmentRef } from "./FragmentRef";
 
 export type InternalAdapter = Adapter & {
+  getFragmentRef<T>(options: {
+    from: string;
+    document: TypedDocumentNode<T, EO>;
+  }): FragmentRef<T>;
+  getQueryRef<T>(options: QueryRefOptions): QueryRef<T>;
   require(...resolvers: ResolverDef[]): boolean;
   getReactiveVar<T>(reactiveVarDef: ReactiveVarDef<T>): ReactiveVar<T>;
 };
@@ -35,19 +46,6 @@ type PersistedData = { data?: any; variables?: any };
 
 const adapters = new WeakMap<Client, InternalAdapter>();
 const DATA_CHANGED = {};
-
-const stringifyReplacer = (_: string, value: any) => {
-  // We sort object properties to ensure that multiple objects with identical properties yield the same stringify results.
-  if (value && typeof value === "object") {
-    const proto = Object.getPrototypeOf(value);
-    if (proto === Object.prototype || proto === null) {
-      const props = Object.keys(value);
-      return props.map((prop) => [prop, value[prop]]);
-    }
-  }
-
-  return value;
-};
 
 const createReactiveVar = <T>(
   persisted: Record<string, EO> | undefined,
@@ -102,7 +100,56 @@ export const createInternalAdapter = (client: Client) => {
   let existingAdapter = adapters.get(client);
   if (existingAdapter) return existingAdapter;
   const registeredResolvers = new Set<ResolverDef>();
-  let queryRefGroups = new Map<DocumentNode, Map<string, QueryRef<any>>>();
+  const fragmentRefCache = new NestedMap((document: DocumentNode) => {
+    const groups = new NestedMap((from: string) => {
+      return {
+        value: new FragmentRef(client, document, from),
+      };
+    });
+    return {
+      value: groups,
+      onDispose: groups.clear,
+    };
+  });
+  const queryRefCache = new NestedMap((document: DocumentNode) => {
+    const groups = new NestedMap(
+      ({
+        tags,
+        variables,
+        fetchPolicy,
+      }: {
+        tags?: string[];
+        variables: any;
+        key?: string;
+        fetchPolicy?: WatchQueryFetchPolicy;
+      }) => {
+        const queryRef = new QueryRef(
+          client.watchQuery({
+            query: document,
+            variables,
+            fetchPolicy,
+          }),
+          tags ?? []
+        );
+
+        return {
+          value: queryRef,
+        };
+      },
+      ({
+        key,
+        // not serialize tags
+        tags: _,
+        ...rest
+      }) => key || orderedStringify(rest)
+    );
+
+    return {
+      value: groups,
+      onDispose: groups.clear,
+    };
+  });
+
   let restoring: Promise<void> | undefined;
   let persistApiInstalled = false;
   let persisted: PersistedData | undefined;
@@ -143,26 +190,13 @@ export const createInternalAdapter = (client: Client) => {
   };
   const adapter: InternalAdapter = {
     client,
-    ref({ key, document, variables = {}, fetchPolicy }) {
-      let queryRefByKeyCache = queryRefGroups.get(document);
-      if (!queryRefByKeyCache) {
-        queryRefByKeyCache = new Map();
-        queryRefGroups.set(document, queryRefByKeyCache);
-      }
-      const queryKey = key || JSON.stringify(variables, stringifyReplacer);
-      let queryRef = queryRefByKeyCache.get(queryKey);
-      if (!queryRef) {
-        queryRef = new QueryRef(
-          client.watchQuery({
-            query: document,
-            variables,
-            fetchPolicy,
-          })
-        );
-        queryRefByKeyCache.set(queryKey, queryRef);
-      }
-
-      return queryRef;
+    getQueryRef({ key, document, variables = {}, tags = [], fetchPolicy }) {
+      return queryRefCache
+        .get(document)
+        .get({ key, variables, fetchPolicy, tags });
+    },
+    getFragmentRef(options) {
+      return fragmentRefCache.get(options.document).get(options.from) as any;
     },
     async mutate(mutation) {
       const options = createOperationOptions(mutation);
@@ -297,27 +331,60 @@ export const createInternalAdapter = (client: Client) => {
     evict(input) {
       return cache.evict({ id: cache.identify(input) });
     },
-    ready(callback?: AnyFunc): any {
-      if (!callback) {
-        return restoring;
-      }
-
+    restoring() {
+      return restoring;
+    },
+    ready(callback: AnyFunc): any {
       if (restoring) {
         restoring.then(() => callback(adapter));
       } else {
         callback(adapter);
       }
     },
-    refetch(query, hardRefetch) {
-      const options = createOperationOptions(query);
-      return adapter.ref(options).state.refetch(hardRefetch);
+    async refetch(input: unknown, hardRefetch?: boolean) {
+      const promises: Promise<void>[] = [];
+      const refetchAction = (ref: QueryRef<any>) => {
+        promises.push(ref.state.refetch(hardRefetch));
+      };
+      if (isQueryDef(input)) {
+        const options = createOperationOptions(input);
+        refetchAction(adapter.getQueryRef(options));
+      } else {
+        let filter: (tag: string) => Boolean;
+
+        // tag
+        if (typeof input === "string") {
+          filter = (tag) => input === tag;
+        } else if (Array.isArray(input)) {
+          filter = (tag) => input.includes(tag);
+        } else {
+          throw new Error(
+            `Unsupported overload refetch(${typeof input}, ${
+              hardRefetch || false
+            })`
+          );
+        }
+
+        queryRefCache.forEach((group) => {
+          group.forEach((ref) => {
+            for (const tag of ref.tags) {
+              if (filter(tag)) {
+                refetchAction(ref);
+                break;
+              }
+            }
+          });
+        });
+      }
+
+      await Promise.all(promises).then(NOOP);
     },
     watch(def: unknown, callback: AnyFunc) {
       const unsubscribeAll = new Set<VoidFunction>();
       (Array.isArray(def) ? def : [def]).forEach((d) => {
         if (isQueryDef(d)) {
           const options = createOperationOptions(d);
-          const queryRef = adapter.ref(options);
+          const queryRef = adapter.getQueryRef(options);
           unsubscribeAll.add(
             queryRef.state.subscribe(() => {
               if (!queryRef.state.loading && !queryRef.state.error) {
@@ -418,8 +485,8 @@ export const createInternalAdapter = (client: Client) => {
   };
 
   const cleanup = async () => {
-    queryRefGroups.forEach((group) =>
-      group.forEach((re) => re.state.dispose())
+    queryRefCache.forEach((group) =>
+      group.forEach((ref) => ref.state.dispose())
     );
     reactiveVars.clear();
   };

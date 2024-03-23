@@ -11,6 +11,7 @@ import {
 import { type QueryRef } from "./QueryRef";
 import { Modifier } from "@apollo/client/cache";
 import {
+  FRAGMENT_DEF_TYPE,
   MUTATION_DEF_TYPE,
   QUERY_DEF_TYPE,
   REACTIVE_VAR_DEF_TYPE,
@@ -31,19 +32,14 @@ export type Equal<T = any> = (a: T, b: T) => boolean;
 
 export type Client = ApolloClient<any>;
 
-export type QueryDef<TData extends EO, TVariables extends EO> = {
-  type: typeof QUERY_DEF_TYPE;
-  create: OptionsBuilder<TData, TVariables>;
-};
-
-export type OptionsBuilder<TData extends EO, TVariables extends EO> = (
-  variables: TVariables
-) => {
+export type QueryDefConfigs<TData extends EO> = {
   key?: string;
   variables?: object;
+  tags?: string[];
   require?: ResolverDef[];
   document: TypedDocumentNode<TData, any>;
   /**
+   * This method for QueryDef only.
    * This method is activated when the adapter initiates an operation to retrieve more data.
    * @param prev
    * @param incoming
@@ -52,17 +48,48 @@ export type OptionsBuilder<TData extends EO, TVariables extends EO> = (
   merge?: (prev: TData, incoming: TData) => TData;
 };
 
+export type FragmentDefConfigs<TData extends EO> = {
+  key?: string;
+  /**
+   * name of fragment
+   */
+  name?: string;
+  fallback?: readonly [string, QueryDef<any, EO>];
+} & ({ id: any; type?: string } | { from: string });
+
+export type MutationDefConfigs<TData extends EO> = {
+  key?: string;
+  variables?: object;
+  require?: ResolverDef[];
+  document: TypedDocumentNode<TData, any>;
+};
+
+export type FragmentDef<TData extends EO, TVariables extends EO> = {
+  type: typeof FRAGMENT_DEF_TYPE;
+  fragment: TypedDocumentNode<TData, TVariables>;
+  create: ConfigsBuilder<TVariables, FragmentDefConfigs<TData>>;
+};
+
+export type QueryDef<TData extends EO, TVariables extends EO> = {
+  type: typeof QUERY_DEF_TYPE;
+  create: ConfigsBuilder<TVariables, QueryDefConfigs<TData>>;
+};
+
+export type MutationDef<TData extends EO, TVariables extends EO> = {
+  type: typeof MUTATION_DEF_TYPE;
+  create: ConfigsBuilder<TVariables, MutationDefConfigs<TData>>;
+};
+
+export type ConfigsBuilder<TVariables extends EO, TConfigs> = (
+  variables: TVariables
+) => TConfigs;
+
 export type OptionsWithVariablesArgs<
   TVariables,
   TOptions extends EO
 > = EO extends TVariables
   ? [options?: TOptions & { variables?: TVariables }]
   : [options: { variables: TVariables } & TOptions];
-
-export type MutationDef<TData extends EO, TVariables extends EO> = {
-  type: typeof MUTATION_DEF_TYPE;
-  create: OptionsBuilder<TData, TVariables>;
-};
 
 export type ResolverDef = {
   type: typeof RESOLVER_DEF_TYPE;
@@ -92,6 +119,7 @@ export type QueryRefOptions = {
   key?: string;
   document: DocumentNode;
   variables?: EO;
+  tags?: string[];
   fetchPolicy?: WatchQueryFetchPolicy;
 };
 
@@ -137,8 +165,6 @@ export type Adapter = {
     action: (adapter: Adapter, ...args: TArgs) => TResult,
     ...args: TArgs
   ): TResult;
-
-  ref<T>(options: QueryRefOptions): QueryRef<T>;
 
   /**
    * Return value of specified reactive variable
@@ -194,7 +220,7 @@ export type Adapter = {
   /**
    * If the client cache is being restored, this will return a promise that resolves upon completion of the restoration process. If not, it returns undefined.
    */
-  ready(): Promise<void> | undefined;
+  restoring(): Promise<void> | undefined;
 
   /**
    * The callback will be invoked upon completion of the restoration process. If there is nothing to restore, the callback will be invoked immediately.
@@ -204,6 +230,15 @@ export type Adapter = {
 
   refetch<TData extends EO>(
     query: QueryDef<TData, EO>,
+    hardRefetch?: boolean
+  ): Promise<void>;
+
+  refetch(queryTag: string, hardRefetch?: boolean): Promise<void>;
+
+  refetch(queryTags: string[], hardRefetch?: boolean): Promise<void>;
+
+  refetch(
+    queryTagFilter: (tag: string) => boolean,
     hardRefetch?: boolean
   ): Promise<void>;
 
