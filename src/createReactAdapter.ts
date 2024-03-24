@@ -1,7 +1,40 @@
 import { createInternalAdapter } from "./createAdapter";
 import { createOperationOptions } from "./operationDef";
-import { Client, EO, FragmentDef, QueryDef, ReactiveVarDef } from "./types";
+import {
+  Adapter,
+  AnyFunc,
+  Client,
+  EO,
+  FragmentDef,
+  QueryDef,
+  ReactiveVarDef,
+} from "./types";
 import { RESOLVED, isFragmentDef, isQueryDef, isReactiveVarDef } from "./utils";
+
+export type AcceptObservableType =
+  | ReactiveVarDef<any>
+  | QueryDef<any, EO>
+  | FragmentDef<any, EO>
+  | ((adapter: Adapter) => Exclude<AcceptObservableType, AnyFunc>);
+
+export type ObservableData<T extends AcceptObservableType> =
+  T extends ReactiveVarDef<infer D>
+    ? D
+    : T extends QueryDef<infer D, EO>
+    ? D
+    : T extends FragmentDef<infer D, EO>
+    ? D
+    : T extends () => infer D
+    ? D extends AcceptObservableType
+      ? ObservableData<D>
+      : never
+    : never;
+
+export type MaybeObservable<T> = Extract<T, AcceptObservableType> extends never
+  ? T
+  :
+      | ObservableData<Extract<T, AcceptObservableType>>
+      | Exclude<T, AcceptObservableType>;
 
 export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
   const adapter = createInternalAdapter(client);
@@ -17,13 +50,7 @@ export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
     subscribeAll() {
       shouldSubscribe.forEach((x) => x());
     },
-    use(
-      ...defs: readonly (
-        | QueryDef<any, EO>
-        | ReactiveVarDef<any>
-        | FragmentDef<any, EO>
-      )[]
-    ): any {
+    use(...defs: readonly AcceptObservableType[]): any {
       const promises: Promise<any>[] = [];
       const results: any[] = [];
 
@@ -59,6 +86,10 @@ export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
       };
 
       defs.forEach((def, index) => {
+        if (typeof def === "function") {
+          def = def(adapter);
+        }
+
         // handle reactive var
         if (isReactiveVarDef(def)) {
           const reactiveVar = adapter.getReactiveVar(def);

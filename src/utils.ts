@@ -140,6 +140,11 @@ const orderedStringifyReplacer = (_: string, value: any) => {
   return value;
 };
 
-export const orderedStringify = (value: any) => {
+/**
+ * Using JSON.stringify serializes value, but it arranges all object keys in order.
+ * @param value
+ * @returns
+ */
+export const stringify = (value: any) => {
   return JSON.stringify(value, orderedStringifyReplacer);
 };

@@ -24,7 +24,7 @@ import {
   isPromiseLike,
   isQueryDef,
   isReactiveVarDef,
-  orderedStringify,
+  stringify,
 } from "./utils";
 import { QueryRef } from "./QueryRef";
 import { Modifiers, makeVar } from "@apollo/client/cache";
@@ -113,24 +113,27 @@ export const createInternalAdapter = (client: Client) => {
       value: groups,
       onDispose: groups.clear,
     };
-  }, orderedStringify);
+  }, stringify);
   const queryRefCache = new NestedMap((document: DocumentNode) => {
     const groups = new NestedMap(
       ({
         tags,
         variables,
         fetchPolicy,
+        context,
       }: {
         tags?: string[];
         variables: any;
         key?: string;
         fetchPolicy?: WatchQueryFetchPolicy;
+        context?: EO;
       }) => {
         const queryRef = new QueryRef(
           client.watchQuery({
             query: document,
             variables,
             fetchPolicy,
+            context,
           }),
           tags ?? []
         );
@@ -141,10 +144,10 @@ export const createInternalAdapter = (client: Client) => {
       },
       ({
         key,
-        // not serialize tags
-        tags: _,
-        ...rest
-      }) => key || orderedStringify(rest)
+        // omit tags
+        tags: _tags,
+        ...serializableKeys
+      }) => key || stringify(serializableKeys)
     );
 
     return {
@@ -193,10 +196,17 @@ export const createInternalAdapter = (client: Client) => {
   };
   const adapter: InternalAdapter = {
     client,
-    getQueryRef({ key, document, variables = {}, tags = [], fetchPolicy }) {
+    getQueryRef({
+      key,
+      document,
+      variables = {},
+      tags = [],
+      fetchPolicy,
+      context,
+    }) {
       return queryRefCache
         .get(document)
-        .get({ key, variables, fetchPolicy, tags });
+        .get({ key, variables, fetchPolicy, tags, context });
     },
     getFragmentRef({ document, from, variables }) {
       return fragmentRefCache.get(document).get({ from, variables }) as any;
@@ -211,6 +221,7 @@ export const createInternalAdapter = (client: Client) => {
         mutation: options.document,
         variables: options.variables,
         fetchPolicy: options.fetchPolicy as any,
+        context: options.context,
       });
       if (result.errors) {
         throw new ApolloError({ graphQLErrors: result.errors });
@@ -227,6 +238,7 @@ export const createInternalAdapter = (client: Client) => {
         query: options.document,
         variables: options.variables,
         fetchPolicy: options.fetchPolicy,
+        context: options.context,
       });
       if (result.errors) {
         throw new ApolloError({ graphQLErrors: result.errors });

@@ -51,6 +51,22 @@ export const GET_LAST_NAME_GQL = gql`
   }
 `;
 
+const user = {
+  id: 1,
+  __typename: "User",
+  firstName: "Ging",
+  lastName: "Freecss",
+};
+
+const todos = [
+  { __typename: "Todo", id: 1 },
+  { __typename: "Todo", id: 2 },
+  { __typename: "Todo", id: 3 },
+  { __typename: "Todo", id: 4 },
+  { __typename: "Todo", id: 5 },
+  { __typename: "Todo", id: 6 },
+];
+
 export const mocks: MockedProviderProps["mocks"] = [
   {
     request: { query: COUNT_GQL },
@@ -64,11 +80,7 @@ export const mocks: MockedProviderProps["mocks"] = [
     request: { query: TODO_LIST_GQL },
     result: {
       data: {
-        todos: [
-          { __typename: "Todo", id: 1 },
-          { __typename: "Todo", id: 2 },
-          { __typename: "Todo", id: 3 },
-        ],
+        todos: todos.slice(0, 3),
       },
     },
   },
@@ -76,11 +88,7 @@ export const mocks: MockedProviderProps["mocks"] = [
     request: { query: TODO_LIST_GQL, variables: { offset: 3 } },
     result: {
       data: {
-        todos: [
-          { __typename: "Todo", id: 4 },
-          { __typename: "Todo", id: 5 },
-          { __typename: "Todo", id: 6 },
-        ],
+        todos: todos.slice(3),
       },
     },
   },
@@ -88,12 +96,7 @@ export const mocks: MockedProviderProps["mocks"] = [
     request: { query: USER_WITH_FULL_NAME_GQL },
     result: {
       data: {
-        user: {
-          id: 1,
-          __typename: "User",
-          firstName: "Ging",
-          lastName: "Freecss",
-        },
+        user,
       },
     },
   },
@@ -101,12 +104,7 @@ export const mocks: MockedProviderProps["mocks"] = [
     request: { query: USER_GQL },
     result: {
       data: {
-        user: {
-          id: 1,
-          __typename: "User",
-          firstName: "Ging",
-          lastName: "Freecss",
-        },
+        user,
       },
     },
   },
@@ -129,12 +127,7 @@ export const mocks: MockedProviderProps["mocks"] = [
     },
     result: {
       data: {
-        user: {
-          id: 1,
-          __typename: "User",
-          firstName: "Ging",
-          lastName: "Freecss",
-        },
+        user,
       },
     },
   },
@@ -142,11 +135,7 @@ export const mocks: MockedProviderProps["mocks"] = [
     request: { query: GET_LAST_NAME_GQL, variables: { id: 1 } },
     result: {
       data: {
-        getLastName: {
-          id: 1,
-          __typename: "User",
-          lastName: "Freecss",
-        },
+        getLastName: user,
       },
     },
   },
@@ -154,11 +143,7 @@ export const mocks: MockedProviderProps["mocks"] = [
     request: { query: GET_LAST_NAME_GQL, variables: { id: 1 } },
     result: {
       data: {
-        getLastName: {
-          id: 1,
-          __typename: "User",
-          lastName: "Freecss",
-        },
+        getLastName: user,
       },
     },
   },

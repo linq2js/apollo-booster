@@ -1,23 +1,23 @@
-type Item<V> = {
+export type Item<V> = {
   value: V;
   onDispose?: (value: V) => void;
   onChange?: (value: V) => void;
 };
 
-type Creator<K, V> = (key: K) => Item<V>;
+type ItemCreator<K, V> = (key: K) => Item<V>;
 
 export class NestedMap<K, V, SK = K> {
-  private create: Creator<K, V>;
-  private serialize: ((key: K) => SK) | undefined;
+  private createItem: ItemCreator<K, V>;
+  private createKey: ((key: K) => SK) | undefined;
   private items = new Map<SK, Item<V> & { key: K }>();
 
-  constructor(create: Creator<K, V>, serialize?: (key: K) => SK) {
-    this.create = create;
-    this.serialize = serialize;
+  constructor(createItem: ItemCreator<K, V>, createKey?: (key: K) => SK) {
+    this.createItem = createItem;
+    this.createKey = createKey;
   }
 
   private find(key: K) {
-    const sk = this.serialize ? this.serialize(key) : (key as unknown as SK);
+    const sk = this.createKey ? this.createKey(key) : (key as unknown as SK);
 
     return {
       item: this.items.get(sk as SK),
@@ -25,10 +25,22 @@ export class NestedMap<K, V, SK = K> {
     };
   }
 
+  *keys() {
+    for (const value of this.items.values()) {
+      yield value.key;
+    }
+  }
+
+  *values() {
+    for (const value of this.items.values()) {
+      yield value.value;
+    }
+  }
+
   get = (key: K) => {
     const { item, sk } = this.find(key);
     if (!item) {
-      const newItem = this.create(key);
+      const newItem = this.createItem(key);
       this.items.set(sk, { ...newItem, key });
       return newItem.value;
     }

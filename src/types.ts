@@ -34,6 +34,7 @@ export type Client = ApolloClient<any>;
 export type QueryDefConfigs<TData extends EO> = {
   key?: string;
   variables?: EO;
+  context?: EO;
   tags?: string[];
   require?: ResolverDef[];
   document: TypedDocumentNode<TData, any>;
@@ -60,6 +61,7 @@ export type FragmentDefConfigs = {
 export type MutationDefConfigs<TData extends EO> = {
   key?: string;
   variables?: EO;
+  context?: EO;
   require?: ResolverDef[];
   document: TypedDocumentNode<TData, any>;
 };
@@ -119,6 +121,7 @@ export type QueryRefOptions = {
   key?: string;
   document: DocumentNode;
   variables?: EO;
+  context?: EO;
   tags?: string[];
   fetchPolicy?: WatchQueryFetchPolicy;
 };
@@ -126,6 +129,7 @@ export type QueryRefOptions = {
 export type OperationOptions = {
   fetchPolicy?: FetchPolicy;
   variables?: EO;
+  context?: EO;
 };
 
 export type PersistOptions = {
