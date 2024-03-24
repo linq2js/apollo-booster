@@ -36,6 +36,7 @@ export type InternalAdapter = Adapter & {
   getFragmentRef<T>(options: {
     from: string;
     document: TypedDocumentNode<T, EO>;
+    variables?: EO;
   }): FragmentRef<T>;
   getQueryRef<T>(options: QueryRefOptions): QueryRef<T>;
   require(...resolvers: ResolverDef[]): boolean;
@@ -101,16 +102,18 @@ export const createInternalAdapter = (client: Client) => {
   if (existingAdapter) return existingAdapter;
   const registeredResolvers = new Set<ResolverDef>();
   const fragmentRefCache = new NestedMap((document: DocumentNode) => {
-    const groups = new NestedMap((from: string) => {
-      return {
-        value: new FragmentRef(client, document, from),
-      };
-    });
+    const groups = new NestedMap(
+      ({ from, variables }: { from: string; variables?: EO }) => {
+        return {
+          value: new FragmentRef({ client, document, from, variables }),
+        };
+      }
+    );
     return {
       value: groups,
       onDispose: groups.clear,
     };
-  });
+  }, orderedStringify);
   const queryRefCache = new NestedMap((document: DocumentNode) => {
     const groups = new NestedMap(
       ({
@@ -195,8 +198,8 @@ export const createInternalAdapter = (client: Client) => {
         .get(document)
         .get({ key, variables, fetchPolicy, tags });
     },
-    getFragmentRef(options) {
-      return fragmentRefCache.get(options.document).get(options.from) as any;
+    getFragmentRef({ document, from, variables }) {
+      return fragmentRefCache.get(document).get({ from, variables }) as any;
     },
     async mutate(mutation) {
       const options = createOperationOptions(mutation);

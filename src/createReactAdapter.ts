@@ -34,19 +34,26 @@ export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
           return;
         }
 
+        if (options.prefetch?.length) {
+          options.prefetch.forEach((def) => handleQueryDef(def, -1));
+        }
+
         const queryRef = adapter.getQueryRef(options);
+
         if (queryRef.state.loading) {
           promises.push(queryRef.state.promise);
           return;
         }
+
         if (queryRef.state.error) {
           throw queryRef.state.error;
         }
-        shouldSubscribe.push(() =>
-          unsubscribeAll.add(queryRef.state.subscribe(onChange))
-        );
 
         if (index !== -1) {
+          shouldSubscribe.push(() =>
+            unsubscribeAll.add(queryRef.state.subscribe(onChange))
+          );
+
           results[index] = queryRef.state.data;
         }
       };

@@ -33,13 +33,13 @@ export type Client = ApolloClient<any>;
 
 export type QueryDefConfigs<TData extends EO> = {
   key?: string;
-  variables?: object;
+  variables?: EO;
   tags?: string[];
   require?: ResolverDef[];
   document: TypedDocumentNode<TData, any>;
+  prefetch?: QueryDef<any, EO>[];
   /**
-   * This method for QueryDef only.
-   * This method is activated when the adapter initiates an operation to retrieve more data.
+   * This method is invoked when the adapter initiates an operation to retrieve more data.
    * @param prev
    * @param incoming
    * @returns
@@ -54,11 +54,12 @@ export type FragmentDefConfigs = {
    */
   name?: string;
   fallback?: QueryDef<any, EO>;
+  variables?: EO;
 } & ({ id: any; type?: string } | { from: string });
 
 export type MutationDefConfigs<TData extends EO> = {
   key?: string;
-  variables?: object;
+  variables?: EO;
   require?: ResolverDef[];
   document: TypedDocumentNode<TData, any>;
 };

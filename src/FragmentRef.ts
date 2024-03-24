@@ -4,6 +4,13 @@ import { Cache, DataProxy, TypedDocumentNode } from "@apollo/client";
 import { EventEmitter } from "./EventEmitter";
 import { equal } from "@wry/equality";
 
+export type FragmentRefOptions = {
+  client: Client;
+  document: DocumentNode;
+  from: string;
+  variables?: EO;
+};
+
 export class FragmentRef<TData> {
   private unsubscribe: VoidFunction | undefined;
   private _disposeTimeout: any;
@@ -38,13 +45,14 @@ export class FragmentRef<TData> {
     return this.diff.result as TData;
   }
 
-  constructor(client: Client, document: DocumentNode, from: string) {
-    this.client = client;
+  constructor(options: FragmentRefOptions) {
+    this.client = options.client;
     this.readOptions = {
-      id: from,
+      id: options.from,
       returnPartialData: true,
-      query: document as TypedDocumentNode<TData, any>,
+      query: options.document as TypedDocumentNode<TData, any>,
       optimistic: true,
+      variables: options.variables,
     };
   }
 
