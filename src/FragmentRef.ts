@@ -1,4 +1,4 @@
-import { DocumentNode, print } from "graphql";
+import { DocumentNode } from "graphql";
 import { Client, EO } from "./types";
 import { Cache, DataProxy, TypedDocumentNode } from "@apollo/client";
 import { EventEmitter } from "./EventEmitter";
@@ -22,7 +22,6 @@ export class FragmentRef<TData> {
   private readOptions: Cache.ReadOptions<EO, TData>;
 
   ready() {
-    this.watch();
     if (!this.promise) {
       this.promise = new Promise((resolve) => {
         this.resolve = resolve;
@@ -31,25 +30,19 @@ export class FragmentRef<TData> {
     return this.promise!;
   }
 
-  data(): TData | undefined {
-    let data: any;
-    if (!this.diff) {
-      data = this.client.cache.read(this.readOptions);
-    } else if (this.diff.complete) {
-      data = this.diff.result;
+  data() {
+    this.watch();
+    if (!this.diff?.complete) {
+      return undefined;
     }
-
-    if (data && Object.keys(data).length) {
-      return data;
-    }
-    return undefined;
+    return this.diff.result as TData;
   }
 
   constructor(client: Client, document: DocumentNode, from: string) {
     this.client = client;
     this.readOptions = {
       id: from,
-      returnPartialData: false,
+      returnPartialData: true,
       query: document as TypedDocumentNode<TData, any>,
       optimistic: true,
     };
@@ -65,6 +58,7 @@ export class FragmentRef<TData> {
         if (!this.diff || equal(this.diff.result, diff.result)) {
           this.diff = diff;
           this.resolve?.(diff.result!);
+          this.resolve = undefined;
           this.promise = Promise.resolve(diff.result!);
           this.onChange.emit();
         }

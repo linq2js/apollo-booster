@@ -816,16 +816,16 @@ describe("fragment", () => {
       `,
       ({ id }) => ({
         id,
-        fallback: ["getLastName", getLastNameQuery.with({ variables: { id } })],
+        fallback: getLastNameQuery.with({ variables: { id } }),
       })
     );
 
     const Child = (props: { id: number }) => {
-      const [{ lastName }] = useAdapter().use(
+      const [value] = useAdapter().use(
         lastNameFragment.with({ variables: props })
       );
 
-      return <div>{lastName}</div>;
+      return <div>{value.lastName}</div>;
     };
 
     const { getByText } = render(<Child id={1} />, { wrapper });
@@ -849,7 +849,7 @@ describe("fragment", () => {
       `,
       ({ id }) => ({
         id,
-        fallback: ["getLastName", getLastNameQuery.with({ variables: { id } })],
+        fallback: getLastNameQuery.with({ variables: { id } }),
       })
     );
 

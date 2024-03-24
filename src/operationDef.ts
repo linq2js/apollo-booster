@@ -59,7 +59,7 @@ export type CreateFragmentDefFn = {
 
   <TData extends EO = EO, TVariables extends EO = EO>(
     document: TypedDocumentNode<TData, TVariables>,
-    create: ConfigsBuilder<TVariables, FragmentDefConfigs<TData>>
+    create: ConfigsBuilder<TVariables, FragmentDefConfigs>
   ): FragmentDef<TData, TVariables> & With<TVariables, FragmentDef<TData, EO>>;
 };
 
@@ -173,14 +173,14 @@ const fragmentCache = new NestedMap((document: DocumentNode) => {
 
 export const createFragmentDef: CreateFragmentDefFn = (
   doc,
-  create?: ConfigsBuilder<any, FragmentDefConfigs<any>>
+  create?: ConfigsBuilder<any, FragmentDefConfigs>
 ): any => {
   return createOperationDefInternal(
     FRAGMENT_DEF_TYPE,
     (variables) => {
       const configs = create
         ? create(variables)
-        : ({ document: doc, id: variables.id } as FragmentDefConfigs<any>);
+        : ({ document: doc, id: variables.id } as FragmentDefConfigs);
       let document: DocumentNode;
       let typeName = "id" in configs ? configs.type : undefined;
       let fragmentName = configs.name;
@@ -243,8 +243,8 @@ export const createOperationOptions = <
   ? QueryDefConfigs<D>
   : T extends MutationDef<infer D, EO>
   ? MutationDefConfigs<D>
-  : T extends FragmentDef<infer D, EO>
-  ? FragmentDefConfigs<D> & { from: string }
+  : T extends FragmentDef<any, EO>
+  ? FragmentDefConfigs & { from: string }
   : never) & { fetchPolicy?: FetchPolicy } => {
   const options =
     "options" in operation

@@ -46,7 +46,9 @@ export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
           unsubscribeAll.add(queryRef.state.subscribe(onChange))
         );
 
-        results[index] = queryRef.state.data;
+        if (index !== -1) {
+          results[index] = queryRef.state.data;
+        }
       };
 
       defs.forEach((def, index) => {
@@ -70,15 +72,14 @@ export const createReactAdapter = (client: Client, onChange: VoidFunction) => {
           // data is not ready
           if (!data) {
             if (options.fallback) {
-              const [prop, queryDef] = options.fallback;
-              handleQueryDef(queryDef, index);
-              results[index] = results[index]?.[prop];
-            } else {
-              throw fragmentRef.ready();
+              handleQueryDef(options.fallback, -1);
             }
-          } else {
-            results[index] = data;
+
+            promises.push(fragmentRef.ready());
+            return;
           }
+
+          results[index] = data;
           shouldSubscribe.push(() =>
             unsubscribeAll.add(fragmentRef.subscribe(onChange))
           );

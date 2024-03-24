@@ -8,7 +8,6 @@ import {
   TypedDocumentNode,
   WatchQueryFetchPolicy,
 } from "@apollo/client";
-import { type QueryRef } from "./QueryRef";
 import { Modifier } from "@apollo/client/cache";
 import {
   FRAGMENT_DEF_TYPE,
@@ -48,13 +47,13 @@ export type QueryDefConfigs<TData extends EO> = {
   merge?: (prev: TData, incoming: TData) => TData;
 };
 
-export type FragmentDefConfigs<TData extends EO> = {
+export type FragmentDefConfigs = {
   key?: string;
   /**
    * name of fragment
    */
   name?: string;
-  fallback?: readonly [string, QueryDef<any, EO>];
+  fallback?: QueryDef<any, EO>;
 } & ({ id: any; type?: string } | { from: string });
 
 export type MutationDefConfigs<TData extends EO> = {
@@ -67,7 +66,7 @@ export type MutationDefConfigs<TData extends EO> = {
 export type FragmentDef<TData extends EO, TVariables extends EO> = {
   type: typeof FRAGMENT_DEF_TYPE;
   fragment: TypedDocumentNode<TData, TVariables>;
-  create: ConfigsBuilder<TVariables, FragmentDefConfigs<TData>>;
+  create: ConfigsBuilder<TVariables, FragmentDefConfigs>;
 };
 
 export type QueryDef<TData extends EO, TVariables extends EO> = {
