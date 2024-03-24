@@ -24,12 +24,11 @@ import {
   isPromiseLike,
   isQueryDef,
   isReactiveVarDef,
-  stringify,
 } from "./utils";
 import { QueryRef } from "./QueryRef";
 import { Modifiers, makeVar } from "@apollo/client/cache";
 import { createOperationOptions } from "./operationDef";
-import { NestedMap } from "./NestedMap";
+import { NestedMap, stringify } from "./NestedMap";
 import { FragmentRef } from "./FragmentRef";
 
 export type InternalAdapter = Adapter & {

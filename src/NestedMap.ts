@@ -73,3 +73,25 @@ export class NestedMap<K, V, SK = K> {
     this.items.clear();
   };
 }
+
+const orderedStringifyReplacer = (_: string, value: any) => {
+  // We sort object properties to ensure that multiple objects with identical properties yield the same stringify results.
+  if (value && typeof value === "object") {
+    const proto = Object.getPrototypeOf(value);
+    if (proto === Object.prototype || proto === null) {
+      const props = Object.keys(value);
+      return props.map((prop) => [prop, value[prop]]);
+    }
+  }
+
+  return value;
+};
+
+/**
+ * Using JSON.stringify serializes value, but it arranges all object keys in order.
+ * @param value
+ * @returns
+ */
+export const stringify = (value: any) => {
+  return JSON.stringify(value, orderedStringifyReplacer);
+};
