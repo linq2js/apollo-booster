@@ -1,4 +1,4 @@
-import { gql, useFragment } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { MockedProviderProps } from "@apollo/client/testing";
 
 export const COUNT_GQL = gql`
